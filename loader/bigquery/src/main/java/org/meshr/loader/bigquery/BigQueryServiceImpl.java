@@ -44,9 +44,16 @@ import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
+import com.google.cloud.ReadChannel;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.StorageOptions;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
 
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.io.IOException;
 
 //import org.datahem.protobuf.measurementprotocol.v2.*;
@@ -108,23 +115,47 @@ class BigQueryServiceImpl implements BigQueryService {
             readyHandler.handle(Future.succeededFuture(this));
     }
 
+    public static Schema getAvroSchemaFromCloudStorage(String bucketName, String fileName) throws Exception {
+            try{
+                Storage storage = StorageOptions.getDefaultInstance().getService();
+                Blob blob = storage.get(BlobId.of(bucketName, fileName));
+                ReadChannel reader = blob.reader();
+                InputStream inputStream = Channels.newInputStream(reader);
+                Schema schema = new Schema.Parser().parse(inputStream);
+                return schema;
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+
     @Override
     public BigQueryService insertData(JsonObject body, String topic, Handler<AsyncResult<Void>> resultHandler) {
         LOG.info("Trying...");        
-        String json = "{ \"name\":\"Frank\", \"age\":47}";
-        String SCHEMA_STR_V1 = "{\"type\":\"record\", \"namespace\":\"foo\", \"name\":\"Man\", \"fields\":[ { \"name\":\"name\", \"type\":\"string\" }, { \"name\":\"age\", \"type\":[\"null\",\"double\"] } ] }";
-        Schema schema = new Schema.Parser().parse(SCHEMA_STR_V1);
+        //String json = "{ \"firstname\":\"Frank\", \"age\":\"47\"}";
+        JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
+        String json = entity.toString();
+        String bucketName = "datahem-schemas";
+        String fileName = "foo.Man.avsc";
+        Schema schema = Schema.create(Schema.Type.STRING);
+        try{
+            schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
+            LOG.info(schema.toString());
+        } catch (java.lang.Exception e) {
+            LOG.error("Cloud Storage Client contextInitialized error ", e);
+        }
         JsonAvroConverter converter = new JsonAvroConverter();
         GenericData.Record record = converter.convertToGenericDataRecord(json.getBytes(), schema);
         TableSchema newSchema = BigQueryAvroUtils.getTableSchema(schema);
         TableRow tRow = BigQueryAvroUtils.convertGenericRecordToTableRow(record, newSchema); 
+        LOG.info(tRow.toString());
 
         HttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
         GoogleCredential credential;
         String projectId = "datahem";
                 String datasetId = "processor";
-                String tableId = "vertx";
+                String tableId = "avro";
         try {
             credential = GoogleCredential.getApplicationDefault(transport,jsonFactory);
         } catch (IOException e) {
@@ -146,8 +177,9 @@ class BigQueryServiceImpl implements BigQueryService {
                 request.setRows(Arrays.asList(row));
 
                 
-                Bigquery bigquery = new Bigquery.Builder(transport, jsonFactory, credential).build();
-			    //.setApplicationName(this.config.applicationName).build();
+                Bigquery bigquery = new Bigquery.Builder(transport, jsonFactory, credential)
+                .setApplicationName("loader.bigquery").build();
+                //.setApplicationName(this.config.applicationName).build();
                 TableDataInsertAllResponse response = bigquery.tabledata().insertAll(projectId, datasetId, tableId, request).execute();
                 if(response.getInsertErrors() != null){
                     for (TableDataInsertAllResponse.InsertErrors err: response.getInsertErrors()) {

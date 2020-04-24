@@ -47,7 +47,7 @@ public class MainVerticle extends AbstractVerticle {
                         bigQueryVerticleDeployment.future().compose(id -> {
                             Promise<String> httpVerticleDeployment = Promise.promise();
                             vertx.deployVerticle(
-                                "org.meshr.processor.vertx.http.HttpServerVerticle",
+                                "org.meshr.loader.http.HttpServerVerticle",
                                 new DeploymentOptions()
                                     .setInstances(1)
                                     .setConfig(config.result()),

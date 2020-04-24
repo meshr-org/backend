@@ -6,12 +6,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.meshr</groupId>
-  <artifactId>processor.loader.bigquery</artifactId>
+  <artifactId>loader.bigquery</artifactId>
   <version>0.9.0</version>
 
   <properties>
     <vertx.version>3.8.3</vertx.version>
-    <main.class>org.meshr.loader.bigquery.MainVerticle</main.class>
+    <main.class>org.meshr.loader.MainVerticle</main.class>
   </properties>
 
 
@@ -24,7 +24,16 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      
+      <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>libraries-bom</artifactId>
+      <version>5.1.0</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
  </dependencies>
+ 
   </dependencyManagement>
 
   <dependencies>
@@ -39,7 +48,7 @@
 <dependency>
     <groupId>com.google.apis</groupId>
     <artifactId>google-api-services-bigquery</artifactId>
-    <version>v2-rev458-1.25.0</version>
+   <version>v2-rev459-1.25.0</version>
 </dependency>
 
 <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
@@ -62,16 +71,22 @@
     <version>0.2.9</version>
 </dependency>
 
-<dependency>
+<!--<dependency>
     <groupId>com.google.cloud</groupId>
-    <artifactId>google-cloud-core</artifactId>
-    <version>1.92.5</version>
-</dependency>
+    <artifactId>google-cloud-core</artifactId>-->
+    <!--<version>1.93.4</version>-->
+<!--</dependency>-->
+
+<dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-storage</artifactId>
+        <version>1.70.0</version>
+    </dependency>
 
 <dependency>
   <groupId>com.google.cloud</groupId>
   <artifactId>google-cloud-pubsub</artifactId>
-  <version>1.102.1</version>
+  <!--<version>1.102.1</version>-->
 </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -186,7 +201,7 @@
         <version>2.1.0</version>
         <configuration>
           <to>
-            <image>gcr.io/datahem/processor-cloudrun-ga</image>
+            <image>gcr.io/datahem/loader-bigquery</image>
             <tags>
               <tag>0.9.0</tag>
               <tag>latest</tag>

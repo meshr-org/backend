@@ -7,12 +7,17 @@ mvn package jib:build -Djib.container.environment=HOST="datahem-vkd3zhb3jq-lz.a.
 mvn package jib:build -Djib.container.environment=HOST="datahem-vkd3zhb3jq-lz.a.run.app",HOST_PORT=443,HOST_URI="/topic/tmp",FREQUENCY=2,BACKUP_TOPIC="backup",ALLOWED_ORIGINS_PATTERN=".*.",PACKAGE="org.meshr.collector.vertx",VERSION="0.9.0"
 
 *run locally
-java -jar target/collector.vertx-fat.jar -DHTTP_PORT=8080 -DBACKUP_TOPIC=tmp -DHOST=datahem-vkd3zhb3jq-lz.a.run.app -DHOST_PORT=80 -DHOST_URI=/optimize/default/topic/tmp -DFREQUENCY=2 -DVERSION=1.0.0
+java -jar target/loader.bigquery-0.9.0.jar -DHTTP_PORT=8080 -DBACKUP_TOPIC=tmp -DHOST=datahem-vkd3zhb3jq-lz.a.run.app -DHOST_PORT=80 -DHOST_URI=/optimize/default/topic/tmp -DFREQUENCY=2 -DVERSION=1.0.0
 
 * test locally
 mvn clean package jib:dockerBuild
-docker run -p 8080:8080 gcr.io/datahem/vertx-webhook-jib
+docker run -p 8080:8080 gcr.io/datahem/loader-bigquery
 curl http://localhost:8080/headers
+curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"name":"testCookie","value":"testValue","options":{"domain":"domain","maxAge":6000}},"headers":{"user-agent":"curl/7.52.1","host":"localhost:8080"}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit","topic":"com.google.analytics.v1.Hit-collector"}}'   "http://localhost:8080/topic/tmp"
+
+curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"firstname":"testCookie","age":"testValue"}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit","topic":"com.google.analytics.v1.Hit-collector"}}'   "http://localhost:8080/topic/tmp"
+
+curl --header "Content-Type: application/json"   --request POST   --data '{"v":"2","tid":"G-K8MQEWSD38","gtm":"2oe4f0","_p":"1992368660","sr":"1920x1080","ul":"sv-se","cid":"504172281.1582733768","dl":"https%3A%2F%2Frobertsahlin.com%2F","dr":"https%3A%2F%2Fwww.google.se%2F","dt":"robertsahlin.com","sid":"1587737451","sct":"2","seg":"1","_s":"1","en":"view_item_list","_et":"6","pr1":"nmTriblend%20Android%20T-Shirt~id12345~pr15.25~brGoogle~caApparel~k0item_category_2~v0Mens~k1item_category_3~v1Shirts~k2item_category_4~v2Tshirts~vaGray~lnSearch%20Results~liSR123~lp1~qt1","pr2":"nmDonut%20Friday%20Scented%20T-Shirt~id67890~pr33.75~brGoogle~caApparel~k0item_category_2~v0Mens~k1item_category_3~v1Shirts~k2item_category_4~v2Tshirts~vaBlack~lnSearch%20Results~liSR123~lp2~qt1"}' "http://localhost:8080/topic/tmp"
 
 tar -xvf graalvm-ce-java8-linux-amd64-20.0.0.tar.gz
 rm graalvm-ce-java8-linux-amd64-20.0.0.tar.gz

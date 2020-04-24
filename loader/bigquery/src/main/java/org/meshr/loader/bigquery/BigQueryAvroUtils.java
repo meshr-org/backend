@@ -383,11 +383,10 @@ class BigQueryAvroUtils {
         "BigQuery NULLABLE field %s should be an Avro UNION of NULL and another type, not %s",
         fieldSchema.getName(),
         unionTypes);
-
     if (v == null) {
       return null;
     }
-
+    
     Type firstType = unionTypes.get(0).getType();
     if (!firstType.equals(Type.NULL)) {
       return convertRequiredField(firstType, unionTypes.get(0).getLogicalType(), fieldSchema, v);
@@ -447,6 +446,10 @@ class BigQueryAvroUtils {
     if (schema != null) {
       for (Schema.Field field : schema.getFields()) {
         String type = getBqType(field);
+        String mode = "REQUIRED";
+        if ("UNION".equals(type) && field.schema().getTypes().get(0).getType().equals(Type.NULL)){
+          mode = "NULLABLE";
+        }
         if ("ARRAY".equals(type)) {
           Schema childSchema = field.schema().getElementType();
           if (childSchema.getType() == Schema.Type.RECORD) {
@@ -454,7 +457,8 @@ class BigQueryAvroUtils {
             TableFieldSchema tfs =
                 new TableFieldSchema()
                     .setName(field.name())
-                    .setType("STRUCT")
+                    //.setType("STRUCT")
+                    .setType("RECORD")
                     .setFields(child)
                     .setMode("REPEATED");
             tableFieldSchemas.add(tfs);
@@ -474,12 +478,15 @@ class BigQueryAvroUtils {
           TableFieldSchema tfs =
               new TableFieldSchema()
                   .setName(field.name())
-                  .setType("STRUCT")
-                  .setFields(getTableFieldSchema(field.schema()));
+                  //.setType("STRUCT")
+                  .setType("RECORD")
+                  .setFields(getTableFieldSchema(field.schema()))
+                  .setMode(mode);
           tableFieldSchemas.add(tfs);
         } else if (type != null) {
-          TableFieldSchema tfs =
-              new TableFieldSchema().setName(field.name()).setType(type).setMode("REQUIRED");
+          TableFieldSchema tfs = new TableFieldSchema().setName(field.name()).setType(type)
+          .setMode(mode);
+          //.setMode("REQUIRED");
           tableFieldSchemas.add(tfs);
         }
       }
@@ -489,6 +496,8 @@ class BigQueryAvroUtils {
 
   static String getBqType(Schema.Field field) {
     Schema t = field.schema();
+    System.out.println(t.toString());
+    System.out.println(t.getType().toString());
     /* JSON logical type may not be set in the field logicalType
      */
     String logicalType = null;
