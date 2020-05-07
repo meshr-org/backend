@@ -1,0 +1,93 @@
+package org.meshr.processor.vertx;;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpServer;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
+import org.meshr.processor.vertx.bigquery.BigQueryVerticle;
+import org.meshr.processor.vertx.bigquery.BigQueryService;
+import io.vertx.serviceproxy.ServiceBinder;
+import io.vertx.core.Promise;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+
+
+@RunWith(VertxUnitRunner.class)
+public class BigQueryServiceTest {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BigQueryServiceTest.class);
+
+  private Vertx vertx;
+  HttpServer server;
+
+  @Before
+  public void setUp(TestContext tc) {
+    vertx = Vertx.vertx();
+    vertx.deployVerticle(BigQueryVerticle.class.getName(), tc.asyncAssertSuccess());
+    /*
+    JsonObject config = new JsonObject();
+    BigQueryService.create(
+                            config.put("PROJECT_ID", "abba"),
+                            WebClient.create(vertx),
+                            ready -> {
+                                if (ready.succeeded()) {
+                                    LOG.info("BigQueryService created.");
+                                    ServiceBinder binder = new ServiceBinder(vertx);
+                                    binder
+                                        .setAddress("bigquery.queue")
+                                        .register(BigQueryService.class, ready.result());
+                                        LOG.info("BigQueryService registereded.");
+                                    //promise.complete();
+                                } else {
+                                    LOG.error("BigQueryService failed to create.");
+                                    //promise.fail(ready.cause());
+                                }
+                            }
+                        );*/
+  }
+
+  @After
+  public void tearDown(TestContext tc) {
+    vertx.close(tc.asyncAssertSuccess());
+  }
+
+  @Test
+  public void testThatTheServerIsStarted(TestContext tc) {
+    Async async = tc.async();
+
+    
+    //String b = "e3BheWxvYWQ6ICJ2PTEmX3Y9ajgxJmE9ODA2NjIzNTMzJnQ9cGFnZXZpZXcmX3M9MSZkbD1odHRwcyUzQSUyRiUyRnJvYmVydHNhaGxpbi5jb20lMkYmdWw9c3Ytc2UmZGU9VVRGLTgmZHQ9cm9iZXJ0c2FobGluLmNvbSZzZD0yNC1iaXQmc3I9MTc0NXg5ODEmdnA9ODE1eDgyMyZqZT0wJl91PVFBQ0FBQUFCfiZqaWQ9MTQzNjE0NzY4MSZnamlkPTIxMjk0NjQxMTgmY2lkPTUwNDE3MjI4MS4xNTgyNzMzNzY4JnRpZD1VQS0yMzM0MDU2Ni0xJl9naWQ9MTc1NDMzMjg2MS4xNTgyODgyMDYwJl9yPTEmZ3RtPTJ3ZzJqMDlROEImej0xMzE1MzQyODI5In0=";
+    Handler<AsyncResult<Void>> handler = reply -> {
+            if (reply.succeeded()) {
+                LOG.info("apiPost handler reply succeded: ", reply);
+                //context.response().setStatusCode(204).end();
+            } else {
+                LOG.error("apiPost handler reply fail: ", reply.cause());
+                //context.fail(reply.cause());
+            }
+        };
+    String topic = "dfs";
+    JsonObject body = new JsonObject()
+            .put("messageId", "123456")
+            .put("publishTime","jhkgh")
+            .put("data","kjhk")
+            .put("attributes", new JsonObject().put("topic", "tmp"));
+
+    String bigqueryQueue = "bigquery.queue";
+    BigQueryService bigQueryService = BigQueryService.createProxy(vertx, bigqueryQueue);
+    BigQueryService bq = bigQueryService.insertData(body, topic, handler);
+}
+}

@@ -1,0 +1,66 @@
+package org.meshr.processor.vertx;;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpServer;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
+
+@RunWith(VertxUnitRunner.class)
+public class MainVerticleTest {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MainVerticleTest.class);
+
+  private Vertx vertx;
+  HttpServer server;
+
+  @Before
+  public void setUp(TestContext tc) {
+    vertx = Vertx.vertx();
+    vertx.deployVerticle(MainVerticle.class.getName(), tc.asyncAssertSuccess());
+  }
+
+  @After
+  public void tearDown(TestContext tc) {
+    vertx.close(tc.asyncAssertSuccess());
+  }
+
+  @Test
+  public void testThatTheServerIsStarted(TestContext tc) {
+    Async async = tc.async();
+    WebClient client = WebClient.create(vertx);
+    String b = "foo";//"e3BheWxvYWQ6ICJ2PTEmX3Y9ajgxJmE9ODA2NjIzNTMzJnQ9cGFnZXZpZXcmX3M9MSZkbD1odHRwcyUzQSUyRiUyRnJvYmVydHNhaGxpbi5jb20lMkYmdWw9c3Ytc2UmZGU9VVRGLTgmZHQ9cm9iZXJ0c2FobGluLmNvbSZzZD0yNC1iaXQmc3I9MTc0NXg5ODEmdnA9ODE1eDgyMyZqZT0wJl91PVFBQ0FBQUFCfiZqaWQ9MTQzNjE0NzY4MSZnamlkPTIxMjk0NjQxMTgmY2lkPTUwNDE3MjI4MS4xNTgyNzMzNzY4JnRpZD1VQS0yMzM0MDU2Ni0xJl9naWQ9MTc1NDMzMjg2MS4xNTgyODgyMDYwJl9yPTEmZ3RtPTJ3ZzJqMDlROEImej0xMzE1MzQyODI5In0=";
+    client
+        .post(8080, "localhost", "/topic/tmp")
+        .timeout(1000)
+        .putHeader("Content-Type", "application/json")
+        .as(BodyCodec.jsonObject())
+        .sendJsonObject(new JsonObject()
+            .put("messageId", "123456")
+            .put("publishTime","jhkgh")
+            .put("data",b)
+            .put("attributes", new JsonObject().put("topic", "tmp"))
+            , response -> {
+                if(response.succeeded()) {
+                    LOG.info("MainVerticleTest status " + response.result().statusCode());
+                    tc.assertEquals(response.result().statusCode(), 204);
+                }else {
+                    LOG.warn("MainVerticleTest " + response.cause().getMessage());
+                }
+                async.complete();
+            });
+    }
+
+}
