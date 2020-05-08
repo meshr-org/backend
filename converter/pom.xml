@@ -10,7 +10,7 @@
   <version>0.9.0</version>
 
   <properties>
-    <vertx.version>3.8.3</vertx.version>
+    <vertx.version>3.9.0</vertx.version>
     <main.class>org.meshr.loader.MainVerticle</main.class>
   </properties>
 
@@ -114,6 +114,11 @@
     <groupId>io.vertx</groupId>
     <artifactId>vertx-config</artifactId>
     <version>${vertx.version}</version>
+</dependency>
+<dependency>
+ <groupId>io.vertx</groupId>
+ <artifactId>vertx-rx-java2</artifactId>
+ <version>${vertx.version}</version>
 </dependency>
 
     <dependency>
