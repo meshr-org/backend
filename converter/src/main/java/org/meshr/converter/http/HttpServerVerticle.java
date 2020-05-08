@@ -24,7 +24,7 @@ import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.config.ConfigRetriever;
 import io.vertx.core.json.JsonObject;
 
-
+/*
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
@@ -40,11 +40,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.Base64;
+import java.util.Base64;*/
 
 
 import org.meshr.converter.transform.TransformService;
+import io.vertx.reactivex.core.AbstractVerticle;
+import io.reactivex.Single;
 
+/*
 import com.google.common.collect.Multimap;
 import java.util.Date;
 import java.util.ArrayList;
@@ -59,7 +62,7 @@ import java.util.Collections;
 import java.util.stream.Stream;
 import java.util.Enumeration;
 import java.util.UUID;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap;*/
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -68,7 +71,7 @@ public class HttpServerVerticle extends AbstractVerticle {
 
     private final static Logger LOG = LoggerFactory.getLogger("HttpServerVerticle.class");
 
-    public static final String CONFIG_HTTP_SERVER_PORT = "http.server.port";
+    //public static final String CONFIG_HTTP_SERVER_PORT = "http.server.port";
     public static final String CONFIG_TRANSFORM_QUEUE = "transform.queue";
     private TransformService transformService;
     
@@ -121,6 +124,10 @@ public class HttpServerVerticle extends AbstractVerticle {
             }
         };
 
-        transformService.transform(body, topic, handler);
+        Single<JsonObject> single = transformService.rxTransform(body, topic);
+        single.subscribe(
+            jsonObject -> System.out.println(jsonObject.encodePrettily()),
+            throwable -> System.out.println(throwable.getMessage())
+        );
     }
 }

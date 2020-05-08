@@ -7,7 +7,8 @@ package org.meshr.converter.transform;
  * in the LICENSE file.
  */
 
-import io.vertx.core.AbstractVerticle;
+//import io.vertx.core.AbstractVerticle;
+import io.vertx.reactivex.core.AbstractVerticle;
 import io.vertx.core.Promise;
 //import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ServiceBinder;
@@ -43,26 +44,18 @@ public class TransformVerticle extends AbstractVerticle {
     private WebClient client;
     private static final Logger LOG = LoggerFactory.getLogger(TransformVerticle.class);
 
-  @Override
-  public void start(Promise<Void> promise) throws Exception {
-            
-            TransformService.create(
-                            config().put("PROJECT_ID", PROJECT_ID),
-                            WebClient.create(vertx),
-                            ready -> {
-                                if (ready.succeeded()) {
-                                    LOG.info("TransformService created.");
-                                    ServiceBinder binder = new ServiceBinder(vertx);
-                                    binder
-                                        .setAddress(CONFIG_TRANSFORM_QUEUE)
-                                        .register(TransformService.class, ready.result());
-                                        LOG.info("TransformService registereded.");
-                                    promise.complete();
-                                } else {
-                                    LOG.error("TransformService failed to create.");
-                                    promise.fail(ready.cause());
-                                }
-                            }
-                        );
+    @Override
+    //public void start(Promise<Void> promise) throws Exception {
+    public void start() throws Exception {
+        
+        TransformService transformService = TransformService.create(
+            config().put("PROJECT_ID", PROJECT_ID),
+            WebClient.create(vertx)
+        );
+    
+        binder
+            .setAddress(CONFIG_TRANSFORM_QUEUE)
+            .register(TransformService.class, transformService);
+        LOG.info("TransformService registereded.");
     }
 }

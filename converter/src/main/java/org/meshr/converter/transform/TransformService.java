@@ -19,6 +19,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.core.http.RequestOptions;
 
+import io.vertx.reactivex.core.AbstractVerticle;
+
 //import com.google.common.cache.LoadingCache;
 //import com.google.cloud.pubsub.v1.Publisher;
 
@@ -35,19 +37,16 @@ public interface TransformService {
     @Fluent
     TransformService transform(
         JsonObject body, 
-        String topic, 
-        Handler<AsyncResult<Void>> resultHandler
+        String topic
     );
 
     @GenIgnore
     static TransformService create(
         JsonObject config,
-        WebClient client,
-        Handler<AsyncResult<TransformService>> readyHandler) {
+        WebClient client) {
             return new TransformServiceImpl( 
                 config, 
-                client, 
-                readyHandler);
+                client);
         }
 
     @GenIgnore
