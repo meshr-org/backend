@@ -48,12 +48,9 @@ public class TransformVerticle extends AbstractVerticle {
     //public void start(Promise<Void> promise) throws Exception {
     public void start() throws Exception {
         
-        TransformService transformService = TransformService.create(
-            config().put("PROJECT_ID", PROJECT_ID),
-            WebClient.create(vertx)
-        );
+        TransformService transformService = TransformService.create();
     
-        binder
+        new ServiceBinder(vertx.getDelegate())
             .setAddress(CONFIG_TRANSFORM_QUEUE)
             .register(TransformService.class, transformService);
         LOG.info("TransformService registereded.");

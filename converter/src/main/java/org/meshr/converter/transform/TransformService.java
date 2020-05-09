@@ -14,6 +14,7 @@ import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+//import io.vertx.reactivex.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
@@ -37,20 +38,17 @@ public interface TransformService {
     @Fluent
     TransformService transform(
         JsonObject body, 
-        String topic
+        String topic,
+        Handler<AsyncResult<JsonObject>> resultHandler
     );
 
     @GenIgnore
-    static TransformService create(
-        JsonObject config,
-        WebClient client) {
-            return new TransformServiceImpl( 
-                config, 
-                client);
-        }
+    static TransformService create() {
+        return new TransformServiceImpl();
+    }
 
     @GenIgnore
-    static TransformService createProxy(Vertx vertx, String address) {
-        return new TransformServiceVertxEBProxy(vertx, address);
+    static org.meshr.converter.transform.reactivex.TransformService createProxy(Vertx vertx, String address) {
+        return new org.meshr.converter.transform.reactivex.TransformService(new TransformServiceVertxEBProxy(vertx, address));
     }
 }

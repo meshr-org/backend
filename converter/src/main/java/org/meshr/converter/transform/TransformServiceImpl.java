@@ -98,30 +98,18 @@ class TransformServiceImpl implements TransformService {
   private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
 
     //LoadingCache<String, Publisher> publisherCache;
-    JsonObject config;
-    WebClient client;
-    Random rand;
-    //String backupTopic;
 
-    TransformServiceImpl(
-        JsonObject config,
-        WebClient client,
-        Handler<AsyncResult<TransformService>> readyHandler) {
-            LOG.info("Transform service ...");    
-            this.config = config;
-            this.client = client;
-            //this.backupTopic = config.getString("BACKUP_TOPIC");
-            this.rand = new Random();
-            readyHandler.handle(Future.succeededFuture(this));
+    TransformServiceImpl() {
+        LOG.info("Transform service ...");    
     }
 
     @Override
-    public TransformService transform(JsonObject body, String topic, Handler<AsyncResult<Void>> resultHandler) {
+    public TransformService transform(JsonObject body, String topic, Handler<AsyncResult<JsonObject>> resultHandler) {
         LOG.info("Trying...");        
         
         JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
         
-        resultHandler.handle(Future.succeededFuture());
+        resultHandler.handle(Future.succeededFuture(entity));
         
         //resultHandler.handle(Future.failedFuture(e));
         return this;
