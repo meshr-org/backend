@@ -11,9 +11,9 @@ java -jar target/loader.bigquery-0.9.0.jar -DHTTP_PORT=8080 -DBACKUP_TOPIC=tmp -
 
 * test locally
 mvn clean package jib:dockerBuild
-docker run -p 8080:8080 gcr.io/datahem/loader-bigquery
-curl http://localhost:8080/headers
-curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"version":"2","items":[{"id":"12345","brand":"Google","name":"Triblend Android T-Shirt","variant":"Gray","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"15.25","quantity":"1","list_id":"SR123","list_name":"Search Results"},{"id":"67890","brand":"Google","name":"Donut Friday Scented T-Shirt","variant":"Black","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"33.75","quantity":"1","list_id":"SR123","list_name":"Search Results"}]}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit","topic":"com.google.analytics.v1.Hit-collector"}}'   "http://localhost:8080/topic/tmp"
+docker run -p 8080:8080 gcr.io/datahem/converter
+
+curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"version":"2","items":[{"id":"12345","brand":"Google","name":"Triblend Android T-Shirt","variant":"Gray","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"15.25","quantity":"1","list_id":"SR123","list_name":"Search Results"},{"id":"67890","brand":"Google","name":"Donut Friday Scented T-Shirt","variant":"Black","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"33.75","quantity":"1","list_id":"SR123","list_name":"Search Results"}]}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit","topic":"com.google.analytics.v1.Hit-collector"}}'   "http://localhost:8080/source/namespace/com.google.analytics.v2/name/Event"
 
 curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"firstname":"testCookie","age":"testValue"}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit","topic":"com.google.analytics.v1.Hit-collector"}}'   "http://localhost:8080/topic/tmp"
 

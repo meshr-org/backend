@@ -5,7 +5,7 @@
  * in the LICENSE file.
  */
 
-@ModuleGen(groupPackage = "org.meshr.loader.bigquery", name = "bigquery")
-package org.meshr.loader.bigquery;
+@ModuleGen(groupPackage = "org.meshr.converter.encode", name = "encode")
+package org.meshr.converter.encode;
 
 import io.vertx.codegen.annotations.ModuleGen;

@@ -1,4 +1,4 @@
-package org.meshr.converter.transform;
+package org.meshr.converter.encode;
 
 /*
  * Copyright (c) 2020 Robert Sahlin
@@ -37,20 +37,20 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.core.http.RequestOptions;
 
 
-public class TransformVerticle extends AbstractVerticle {
+public class EncodeVerticle extends AbstractVerticle {
 
-    public static final String CONFIG_TRANSFORM_QUEUE = "transform.queue";
+    public static final String CONFIG_TRANSFORM_QUEUE = "encode.queue";
     private static final String PROJECT_ID = ServiceOptions.getDefaultProjectId();
-    private static final Logger LOG = LoggerFactory.getLogger(TransformVerticle.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EncodeVerticle.class);
 
     @Override
     public void start() throws Exception {
         
-        TransformService transformService = TransformService.create();
+        EncodeService encodeService = EncodeService.create();
     
         new ServiceBinder(vertx.getDelegate())
             .setAddress(CONFIG_TRANSFORM_QUEUE)
-            .register(TransformService.class, transformService);
-        LOG.info("TransformService registereded.");
+            .register(EncodeService.class, encodeService);
+        LOG.info("EncodeService registereded.");
     }
 }

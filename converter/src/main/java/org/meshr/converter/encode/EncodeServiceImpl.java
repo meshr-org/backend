@@ -1,4 +1,4 @@
-package org.meshr.converter.transform;
+package org.meshr.converter.encode;
 
 /*
  * Copyright (c) 2020 Robert Sahlin
@@ -93,29 +93,61 @@ import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 //import org.meshr.processor.utils.ProtobufUtils;
 
 
-class TransformServiceImpl implements TransformService {
+class EncodeServiceImpl implements EncodeService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(EncodeServiceImpl.class);
 
     //LoadingCache<String, Publisher> publisherCache;
 
-    TransformServiceImpl() {
-        LOG.info("Transform service ...");    
+    EncodeServiceImpl() {
+        LOG.info("Encode service ...");    
     }
 
     @Override
-    public TransformService transform(
+    public EncodeService encode(
         JsonObject body, 
         String namespace, 
         String name, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
             LOG.info("Trying...");        
             try{
-                JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
+                LOG.info("Trying...");        
+                //String json = "{ \"firstname\":\"Frank\", \"age\":\"47\"}";
+                JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
+                String json = entity.toString();
+                LOG.info(json);
+                String bucketName = "datahem-schemas";
+                String fileName = "com.google.analytics.v2.Event.avsc";
+                Schema schema = Schema.create(Schema.Type.STRING);
+                schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
+                LOG.info(schema.toString());
+                JsonAvroConverter converter = new JsonAvroConverter();
+                GenericData.Record record = converter.convertToGenericDataRecord(json.getBytes(), schema);
                 resultHandler.handle(Future.succeededFuture(entity));
             }catch(Exception e){
                 resultHandler.handle(Future.failedFuture(e));
             }
             return this;
+    }
+
+    public static Schema getAvroSchemaFromCloudStorage(String bucketName, String fileName) throws Exception {
+        try{
+            LOG.info(bucketName);
+            LOG.info(fileName);
+            Storage storage = StorageOptions.getDefaultInstance().getService();
+            Blob blob = storage.get(BlobId.of(bucketName, fileName));
+            //LOG.info("cloud storage got blob");
+            ReadChannel reader = blob.reader();
+            //LOG.info("cloud storage got reader");
+            InputStream inputStream = Channels.newInputStream(reader);
+            //String inputStream = new String(blob.getContent()); // ok if small files
+            //LOG.info("cloud storage got inputstream");
+            Schema schema = new Schema.Parser().parse(inputStream);
+            return schema;
+        }catch (Exception e){
+            LOG.info("cloud storage error");
+            e.printStackTrace();
+            return null;
+        }
     }
 }

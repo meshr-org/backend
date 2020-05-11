@@ -1,4 +1,4 @@
-package org.meshr.converter.transform;
+package org.meshr.converter.encode;
 
 /*
  * Copyright (c) 2020 Robert Sahlin
@@ -32,20 +32,20 @@ import io.vertx.core.logging.LoggerFactory;
 
 @ProxyGen
 @VertxGen
-public interface TransformService {
+public interface EncodeService {
 
     @Fluent
-    TransformService transform(
+    EncodeService encode(
         JsonObject body, 
         String namespace,
         String name,
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore
-    static TransformService create() { return new TransformServiceImpl();}
+    static EncodeService create() { return new EncodeServiceImpl();}
 
     @GenIgnore
-    static org.meshr.converter.transform.reactivex.TransformService createProxy(Vertx vertx, String address) {
-        return new org.meshr.converter.transform.reactivex.TransformService(new TransformServiceVertxEBProxy(vertx, address));
+    static org.meshr.converter.encode.reactivex.EncodeService createProxy(Vertx vertx, String address) {
+        return new org.meshr.converter.encode.reactivex.EncodeService(new EncodeServiceVertxEBProxy(vertx, address));
     }
 }
