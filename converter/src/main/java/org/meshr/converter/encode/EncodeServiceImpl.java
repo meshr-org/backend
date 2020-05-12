@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 import java.util.Optional;
+import java.util.StringJoiner;
 import com.google.common.collect.ImmutableMap;
 import java.time.Instant;
 import com.google.api.core.ApiFuture;
@@ -109,21 +110,22 @@ class EncodeServiceImpl implements EncodeService {
         String namespace, 
         String name, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
-            LOG.info("Trying...");        
+            LOG.info("Encoding...");        
             try{
                 LOG.info("Trying...");        
-                //String json = "{ \"firstname\":\"Frank\", \"age\":\"47\"}";
-                JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-                String json = entity.toString();
-                LOG.info(json);
                 String bucketName = "datahem-schemas";
-                String fileName = "com.google.analytics.v2.Event.avsc";
+                StringJoiner fileName = new StringJoiner(".");
+                fileName.add(namespace).add(name).add("avsc");
+                //"com.google.analytics.v2.Event.avsc";
                 Schema schema = Schema.create(Schema.Type.STRING);
-                schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
+                schema = getAvroSchemaFromCloudStorage(bucketName, fileName.toString());
                 LOG.info(schema.toString());
                 JsonAvroConverter converter = new JsonAvroConverter();
-                GenericData.Record record = converter.convertToGenericDataRecord(json.getBytes(), schema);
-                resultHandler.handle(Future.succeededFuture(entity));
+                //GenericData.Record record = converter.convertToGenericDataRecord(body.getJsonObject("data").toString().getBytes(), schema);
+                byte[] binaryAvro = converter.convertToAvro(body.getJsonObject("data").toString().getBytes(), schema);
+                body.put("data", Base64.getEncoder().encodeToString(binaryAvro));
+                body.getJsonObject("attributes").put("namespace", namespace).put("name", name).put("format", "avro/binary");
+                resultHandler.handle(Future.succeededFuture(body));
             }catch(Exception e){
                 resultHandler.handle(Future.failedFuture(e));
             }
@@ -136,12 +138,8 @@ class EncodeServiceImpl implements EncodeService {
             LOG.info(fileName);
             Storage storage = StorageOptions.getDefaultInstance().getService();
             Blob blob = storage.get(BlobId.of(bucketName, fileName));
-            //LOG.info("cloud storage got blob");
             ReadChannel reader = blob.reader();
-            //LOG.info("cloud storage got reader");
             InputStream inputStream = Channels.newInputStream(reader);
-            //String inputStream = new String(blob.getContent()); // ok if small files
-            //LOG.info("cloud storage got inputstream");
             Schema schema = new Schema.Parser().parse(inputStream);
             return schema;
         }catch (Exception e){
