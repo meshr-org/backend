@@ -133,10 +133,6 @@ class TransformServiceImpl implements TransformService {
                         resultHandler.handle(Future.failedFuture(throwable));
                     }
                 );
-            /*    resultHandler.handle(Future.succeededFuture(entity));
-            }catch(Exception e){
-                resultHandler.handle(Future.failedFuture(e));
-            }*/
             return this;
     } 
 }
