@@ -28,6 +28,7 @@ import io.vertx.config.ConfigRetriever;
 
 import org.meshr.converter.transform.TransformService;
 import org.meshr.converter.encode.EncodeService;
+import org.meshr.converter.publish.PublishService;
 import io.vertx.reactivex.core.AbstractVerticle;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
@@ -45,14 +46,18 @@ public class HttpServerVerticle extends AbstractVerticle {
     private org.meshr.converter.transform.reactivex.TransformService transformService;
     public static final String CONFIG_ENCODE_QUEUE = "encode.queue";
     private org.meshr.converter.encode.reactivex.EncodeService encodeService;
+    public static final String CONFIG_PUBLISH_QUEUE = "publish.queue";
+    private org.meshr.converter.publish.reactivex.PublishService publishService;
     
     //@Override
     public void start(Promise<Void> promise) throws Exception {
 
         String transformQueue = config().getString(CONFIG_TRANSFORM_QUEUE, "transform.queue");
-        transformService = TransformService.createProxy(vertx.getDelegate(), transformQueue);
+        transformService = TransformService.createProxy(vertx, transformQueue);
         String encodeQueue = config().getString(CONFIG_ENCODE_QUEUE, "encode.queue");
         encodeService = EncodeService.createProxy(vertx.getDelegate(), encodeQueue);
+        String publishQueue = config().getString(CONFIG_PUBLISH_QUEUE, "publish.queue");
+        publishService = PublishService.createProxy(vertx.getDelegate(), publishQueue);
         
         Router apiRouter = Router.router(vertx);
         apiRouter.route();
@@ -94,7 +99,7 @@ public class HttpServerVerticle extends AbstractVerticle {
             return Single.just(transformedBody);
         })*/
         .flatMapSingle(transformedBody -> encodeService.rxEncode(transformedBody,namespace, name))
-        //.flatMap(y -> publishService.rxPublish(y))
+        .flatMapSingle(encodedBody -> publishService.rxPublish(encodedBody, namespace, name))
         .subscribe(
             jsonObject -> {
                 System.out.println(jsonObject.encodePrettily());

@@ -1,4 +1,4 @@
-package org.meshr.converter.transform;
+package org.meshr.converter.publish;
 
 /*
  * Copyright (c) 2020 Robert Sahlin
@@ -13,11 +13,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.CompositeFuture;
-//import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.codec.BodyCodec;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.reactivex.core.Vertx;
+import io.vertx.core.Vertx;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -51,6 +51,7 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
 
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -61,7 +62,7 @@ import java.io.IOException;
 //import com.google.pubsub.v1.PubsubMessage;
 
 //import org.meshr.processor.measurementprotocol.v2.utils.*;
-
+/*
 import com.google.api.services.bigquery.Bigquery;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
@@ -87,56 +88,58 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
-import io.vertx.reactivex.ext.web.client.WebClient;
-import io.vertx.reactivex.ext.web.client.HttpRequest;
+*/
 
 //import org.apache.beam.sdk.io.gcp.bigquery.BigQueryAvroUtils;
 //import org.meshr.processor.utils.ProtobufUtils;
 
 
-class TransformServiceImpl implements TransformService {
+class PublishServiceImpl implements PublishService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
-  WebClient client;
-  JsonObject config;
+    private static final Logger LOG = LoggerFactory.getLogger(PublishServiceImpl.class);
+    LoadingCache<String, Publisher> publisherCache;
 
-    //LoadingCache<String, Publisher> publisherCache;
-
-    TransformServiceImpl(Vertx vertx, JsonObject config) {
-        LOG.info("Transform service ...");
-        this.client = WebClient.create(vertx);
-        this.config = config;    
+    PublishServiceImpl(LoadingCache<String, Publisher> publisherCache) {
+        LOG.info("Publish service ...");    
+        this.publisherCache = publisherCache;
     }
 
     @Override
-    public TransformService transform(
+    public PublishService publish(
         JsonObject body, 
         String namespace, 
         String name, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
-            LOG.info("Trying...");        
-            //try{
-                //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-            client
-                .post(config.getString(namespace + "." + name))
-                .ssl(true)
-                .timeout(10000)
-                .putHeader("Content-Type", "application/json")
-                .rxSendJsonObject(body.getJsonObject("data"))
-                .subscribe(
-                    resp -> {
-                        LOG.info(resp.bodyAsJsonObject());
-                        resultHandler.handle(Future.succeededFuture(resp.bodyAsJsonObject()));
-                    },
-                    throwable -> {
-                        LOG.error(throwable.getMessage());
-                        resultHandler.handle(Future.failedFuture(throwable));
+            try {
+                Map<String,String> attributes = body.getJsonObject("attributes")
+                    .getMap()
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> entry.getValue() instanceof String)
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> (String)e.getValue()));
+                
+                PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
+                    .putAllAttributes(ImmutableMap.<String, String>builder()
+                        .putAll(attributes)
+                        .build())
+                    .setData(ByteString.copyFromUtf8(body.getString("data")))
+                    .build();
+                
+                ApiFuture<String> topicFuture = publisherCache.get(namespace + "." + name).publish(pubsubMessage);
+                ApiFutures.addCallback(topicFuture,
+                new ApiFutureCallback<String>() {
+                    public void onSuccess(String messageId) {
+                        resultHandler.handle(Future.succeededFuture(body));
                     }
-                );
-            /*    resultHandler.handle(Future.succeededFuture(entity));
-            }catch(Exception e){
+                    public void onFailure(Throwable t) {
+                        LOG.error("Failed to publish: ", t);
+                        resultHandler.handle(Future.failedFuture(t));    
+                    }
+                }, MoreExecutors.directExecutor());
+            } catch (Exception e) {
+                LOG.error("PubSubClient contextInitialized error ", e);
                 resultHandler.handle(Future.failedFuture(e));
-            }*/
+            }
             return this;
-    } 
+    }
 }

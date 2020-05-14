@@ -12,7 +12,7 @@ import io.vertx.reactivex.core.AbstractVerticle;
 import io.vertx.core.Promise;
 //import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ServiceBinder;
-import io.vertx.config.ConfigRetriever;
+//import io.vertx.config.ConfigRetriever;
 import io.vertx.core.json.JsonObject;
 
 import java.io.FileInputStream;
@@ -24,6 +24,7 @@ import java.util.Properties;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+/*
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -35,18 +36,17 @@ import java.util.concurrent.TimeUnit;
 import com.google.cloud.ServiceOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.core.http.RequestOptions;
-
+*/
 
 public class TransformVerticle extends AbstractVerticle {
 
     public static final String CONFIG_TRANSFORM_QUEUE = "transform.queue";
-    private static final String PROJECT_ID = ServiceOptions.getDefaultProjectId();
     private static final Logger LOG = LoggerFactory.getLogger(TransformVerticle.class);
 
     @Override
     public void start() throws Exception {
         
-        TransformService transformService = TransformService.create();
+        TransformService transformService = TransformService.create(vertx, config());
     
         new ServiceBinder(vertx.getDelegate())
             .setAddress(CONFIG_TRANSFORM_QUEUE)

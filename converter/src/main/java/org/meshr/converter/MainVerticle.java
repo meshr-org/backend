@@ -25,6 +25,9 @@ import io.reactivex.Observable;
 import org.meshr.converter.http.HttpServerVerticle;
 import org.meshr.converter.transform.TransformVerticle;
 import org.meshr.converter.encode.EncodeVerticle;
+import org.meshr.converter.publish.PublishVerticle;
+
+import com.google.cloud.ServiceOptions;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -43,9 +46,9 @@ public class MainVerticle extends AbstractVerticle {
         Observable<String> verticleNames = Observable.just(
             HttpServerVerticle.class.getName(),
             TransformVerticle.class.getName(),
-            EncodeVerticle.class.getName()
+            EncodeVerticle.class.getName(),
             //DecodeVerticle.class.getName(),
-            //PublishVerticle.class.getName()
+            PublishVerticle.class.getName()
         );
         
         retriever.rxGetConfig()
