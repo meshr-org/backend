@@ -45,8 +45,39 @@ public class TransformVerticle extends AbstractVerticle {
 
     @Override
     public void start() throws Exception {
+
+        loader = new CacheLoader<String, Single<String>>() {
+            @Override
+            public Publisher load(String serviceUrl) {
+                String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+                return client
+                    .get(tokenUrl)
+                    .ssl(true)
+                    .timeout(10000)
+                    .putHeader("Metadata-Flavor", "Google")
+                    .rxSend()
+                    .map(HttpResponse::bodyAsString);
+            }
+		};
+			
+        removalListener = new RemovalListener<String, Single<String>>() {
+            @Override
+            public void onRemoval(RemovalNotification<String, Single<String>> removal) {
+                //final Single<String> single = removal.getValue();
+                if (publisher != null) {
+                    LOG.info("Token terminated");
+                }
+            }
+        };
+			
+        tokens = CacheBuilder
+            .newBuilder()
+            .maximumSize(1000)
+            .removalListener(removalListener)
+            .expireAfterAccess(60, TimeUnit.SECONDS)
+            .build(loader);
         
-        TransformService transformService = TransformService.create(vertx, config());
+        TransformService transformService = TransformService.create(vertx, config(), tokens);
     
         new ServiceBinder(vertx.getDelegate())
             .setAddress(CONFIG_TRANSFORM_QUEUE)

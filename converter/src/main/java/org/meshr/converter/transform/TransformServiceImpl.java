@@ -18,6 +18,7 @@ import io.vertx.ext.web.codec.BodyCodec;
 import io.vertx.core.http.RequestOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.ext.web.client.HttpResponse;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -89,7 +90,7 @@ import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.client.HttpRequest;
-
+import io.reactivex.Single;
 //import org.apache.beam.sdk.io.gcp.bigquery.BigQueryAvroUtils;
 //import org.meshr.processor.utils.ProtobufUtils;
 
@@ -99,13 +100,15 @@ class TransformServiceImpl implements TransformService {
   private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
   WebClient client;
   JsonObject config;
+  LoadingCache<String, Single<String>> tokenCache;
 
     //LoadingCache<String, Publisher> publisherCache;
 
-    TransformServiceImpl(Vertx vertx, JsonObject config) {
+    TransformServiceImpl(Vertx vertx, JsonObject config,  LoadingCache<String, Single<String>> tokenCache) {
         LOG.info("Transform service ...");
         this.client = WebClient.create(vertx);
-        this.config = config;    
+        this.config = config;
+        this.tokenCache = tokenCache;    
     }
 
     @Override
@@ -117,12 +120,20 @@ class TransformServiceImpl implements TransformService {
             LOG.info("Trying...");        
             //try{
                 //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-            client
-                .post(config.getString(namespace + "." + name))
-                .ssl(true)
-                .timeout(10000)
-                .putHeader("Content-Type", "application/json")
-                .rxSendJsonObject(body.getJsonObject("data"))
+            String serviceUrl = config.getString(namespace + "." + name);
+            
+            //getToken(serviceUrl, client)
+            tokenCache.get(serviceUrl)
+                .flatMap(token -> {
+                    LOG.info("send for transformation");
+                    return client
+                        .post(serviceUrl)
+                        .bearerTokenAuthentication(token)
+                        .ssl(true)
+                        .timeout(10000)
+                        .putHeader("Content-Type", "application/json")
+                        .rxSendJsonObject(body.getJsonObject("data"));
+                })
                 .subscribe(
                     resp -> {
                         LOG.info(resp.bodyAsJsonObject());
@@ -133,6 +144,24 @@ class TransformServiceImpl implements TransformService {
                         resultHandler.handle(Future.failedFuture(throwable));
                     }
                 );
+                
             return this;
     } 
+
+    /*
+    public static Single<String> getToken(String serviceUrl, WebClient client) {
+        if(false)
+            return Single.just("hello");//cached token...
+        else {
+            LOG.info("inside getToken");
+            String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+            return client
+                .get(tokenUrl)
+                .ssl(true)
+                .timeout(10000)
+                .putHeader("Metadata-Flavor", "Google")
+                .rxSend()
+                .map(HttpResponse::bodyAsString);
+        }
+      }*/
 }
