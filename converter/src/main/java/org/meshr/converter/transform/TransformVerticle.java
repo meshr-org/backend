@@ -23,7 +23,22 @@ import java.util.HashMap;
 import java.util.Properties;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.reactivex.Single;
+import io.vertx.reactivex.ext.web.client.WebClient;
+import io.vertx.reactivex.ext.web.client.HttpResponse;
+import io.vertx.core.Future;
+import io.vertx.core.Context;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executor;
+
+//import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+//import com.github.benmanes.caffeine.cache.Caffeine;
 /*
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -42,46 +57,88 @@ public class TransformVerticle extends AbstractVerticle {
 
     public static final String CONFIG_TRANSFORM_QUEUE = "transform.queue";
     private static final Logger LOG = LoggerFactory.getLogger(TransformVerticle.class);
+    //private static LoadingCache<String, String> tokens;
+    //private static CacheLoader<String, String> loader;
+    //private static RemovalListener<String, Single<String>> removalListener;
+    WebClient client = WebClient.create(vertx);
+    AsyncLoadingCache<String, String> tokenCache;
 
     @Override
     public void start() throws Exception {
 
-        loader = new CacheLoader<String, Single<String>>() {
+        Context context = vertx.getOrCreateContext();
+        contextExecutor = cmd -> context.runOnContext(v -> cmd.run());
+
+        tokenCache = Caffeine.newBuilder()
+            .executor(contextExecutor)
+            .buildAsync((key, executor) -> toCompletableFuture(loadToken(key)));
+
+            TransformService transformService = TransformService.create(vertx, config(), tokenCache);
+    
+            new ServiceBinder(vertx.getDelegate())
+                .setAddress(CONFIG_TRANSFORM_QUEUE)
+                .register(TransformService.class, transformService);
+            LOG.info("TransformService registereded.");
+        }
+        
+        private Future<String> loadToken(String serviceUrl) {
+          Promise<HttpResponse<JsonObject>> promise = Promise.promise();
+
+          String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+          client
+              .get(tokenUrl)
+              //.as(BodyCodec.jsonObject())
+              //.expect(ResponsePredicate.SC_OK)
+              .ssl(true)
+              .timeout(10000)
+              .putHeader("Metadata-Flavor", "Google")
+              .send(promise);
+      
+          return promise.future().map(HttpResponse::bodyAsString);
+        }
+
+      }
+
+        /*    
+        loader = new CacheLoader<String, String>() {
             @Override
-            public Publisher load(String serviceUrl) {
+            public String load(String serviceUrl) {
                 String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
-                return client
+                client
                     .get(tokenUrl)
                     .ssl(true)
                     .timeout(10000)
                     .putHeader("Metadata-Flavor", "Google")
                     .rxSend()
-                    .map(HttpResponse::bodyAsString);
+                    .map(HttpResponse::bodyAsString)
+                    .subscribe(
+                        resp -> {
+                            return resp;
+                        }
+                    );
             }
 		};
-			
-        removalListener = new RemovalListener<String, Single<String>>() {
-            @Override
-            public void onRemoval(RemovalNotification<String, Single<String>> removal) {
-                //final Single<String> single = removal.getValue();
-                if (publisher != null) {
-                    LOG.info("Token terminated");
-                }
-            }
-        };
+        
+
 			
         tokens = CacheBuilder
             .newBuilder()
             .maximumSize(1000)
-            .removalListener(removalListener)
+            //.removalListener(removalListener)
             .expireAfterAccess(60, TimeUnit.SECONDS)
             .build(loader);
         
-        TransformService transformService = TransformService.create(vertx, config(), tokens);
+    private Future<JsonObject> loadToken(String serviceUrl) {
+        Promise<JsonObject> promise = Promise.promise();
     
-        new ServiceBinder(vertx.getDelegate())
-            .setAddress(CONFIG_TRANSFORM_QUEUE)
-            .register(TransformService.class, transformService);
-        LOG.info("TransformService registereded.");
-    }
-}
+        AsyncLoadingCache<Integer, JsonObject> authorCache = getTokenCache(env);
+        authorCache.get(authorId).whenComplete((jsonObject, throwable) -> {
+          if (throwable == null) {
+            promise.complete(jsonObject);
+          } else {
+            promise.fail(throwable);
+          }
+        });
+    
+        return promise.future();
+    }*/

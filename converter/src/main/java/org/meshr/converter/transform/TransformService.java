@@ -20,6 +20,8 @@ import io.vertx.core.json.JsonObject;
 //import io.vertx.core.http.RequestOptions;
 
 import io.vertx.reactivex.core.AbstractVerticle;
+import com.google.common.cache.LoadingCache;
+import io.reactivex.Single;
 
 //import com.google.common.cache.LoadingCache;
 //import com.google.cloud.pubsub.v1.Publisher;
@@ -42,7 +44,7 @@ public interface TransformService {
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore
-    static TransformService create(Vertx vertx, JsonObject config) { return new TransformServiceImpl(vertx, config);}
+    static TransformService create(Vertx vertx, JsonObject config, LoadingCache<String, String> tokens) { return new TransformServiceImpl(vertx, config, tokens);}
 
     @GenIgnore
     static org.meshr.converter.transform.reactivex.TransformService createProxy(Vertx vertx, String address) {

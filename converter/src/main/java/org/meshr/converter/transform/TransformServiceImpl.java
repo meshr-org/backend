@@ -91,6 +91,9 @@ import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.client.HttpRequest;
 import io.reactivex.Single;
+import io.reactivex.Observable;
+//import java.util.concurrent.Callable;
+//import java.util.concurrent.Future;
 //import org.apache.beam.sdk.io.gcp.bigquery.BigQueryAvroUtils;
 //import org.meshr.processor.utils.ProtobufUtils;
 
@@ -100,11 +103,11 @@ class TransformServiceImpl implements TransformService {
   private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
   WebClient client;
   JsonObject config;
-  LoadingCache<String, Single<String>> tokenCache;
+  LoadingCache<String, String> tokenCache;
 
     //LoadingCache<String, Publisher> publisherCache;
 
-    TransformServiceImpl(Vertx vertx, JsonObject config,  LoadingCache<String, Single<String>> tokenCache) {
+    TransformServiceImpl(Vertx vertx, JsonObject config,  LoadingCache<String, String> tokenCache) {
         LOG.info("Transform service ...");
         this.client = WebClient.create(vertx);
         this.config = config;
@@ -120,11 +123,14 @@ class TransformServiceImpl implements TransformService {
             LOG.info("Trying...");        
             //try{
                 //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-            String serviceUrl = config.getString(namespace + "." + name);
+            String serviceUrl = "hello"; //config.getString(namespace + "." + name);
             
-            //getToken(serviceUrl, client)
-            tokenCache.get(serviceUrl)
-                .flatMap(token -> {
+            Observable<String> source = Observable.fromFuture(getToken(serviceUrl));
+            //tokenCache.get(serviceUrl)
+            //Callable<String> callable = () -> tokenCache.get(serviceUrl);
+            //Observable<String> source = Observable.fromCallable(callable);
+            source    
+                .flatMapSingle(token -> {
                     LOG.info("send for transformation");
                     return client
                         .post(serviceUrl)
@@ -147,6 +153,20 @@ class TransformServiceImpl implements TransformService {
                 
             return this;
     } 
+
+    private Future<String> getToken(String serviceUrl) {
+        Promise<String> promise = Promise.promise();
+    
+        tokenCache.get(serviceUrl).whenComplete((token, throwable) -> {
+          if (throwable == null) {
+            promise.complete(token);
+          } else {
+            promise.fail(throwable);
+          }
+        });
+    
+        return promise.future();
+      }
 
     /*
     public static Single<String> getToken(String serviceUrl, WebClient client) {
