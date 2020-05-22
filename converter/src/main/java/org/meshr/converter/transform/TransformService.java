@@ -27,7 +27,7 @@ import io.reactivex.Single;
 //import com.google.cloud.pubsub.v1.Publisher;
 
 //import java.util.Map;
-//import java.util.HashMap;
+import java.util.HashMap;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -44,7 +44,7 @@ public interface TransformService {
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore
-    static TransformService create(Vertx vertx, JsonObject config, LoadingCache<String, String> tokens) { return new TransformServiceImpl(vertx, config, tokens);}
+    static TransformService create(Vertx vertx, JsonObject config, HashMap<String, String> tokens) { return new TransformServiceImpl(vertx, config, tokens);}
 
     @GenIgnore
     static org.meshr.converter.transform.reactivex.TransformService createProxy(Vertx vertx, String address) {

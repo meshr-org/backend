@@ -90,8 +90,17 @@ import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.client.HttpRequest;
+import io.reactivex.functions.Function;
+import java.util.concurrent.Callable;
 import io.reactivex.Single;
 import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
+import io.reactivex.SingleSource;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
+
+import java.net.*;
+import java.io.*;
 //import java.util.concurrent.Callable;
 //import java.util.concurrent.Future;
 //import org.apache.beam.sdk.io.gcp.bigquery.BigQueryAvroUtils;
@@ -103,11 +112,11 @@ class TransformServiceImpl implements TransformService {
   private static final Logger LOG = LoggerFactory.getLogger(TransformServiceImpl.class);
   WebClient client;
   JsonObject config;
-  LoadingCache<String, String> tokenCache;
+  HashMap<String, String> tokenCache;
 
     //LoadingCache<String, Publisher> publisherCache;
 
-    TransformServiceImpl(Vertx vertx, JsonObject config,  LoadingCache<String, String> tokenCache) {
+    TransformServiceImpl(Vertx vertx, JsonObject config,  HashMap<String, String> tokenCache) {
         LOG.info("Transform service ...");
         this.client = WebClient.create(vertx);
         this.config = config;
@@ -120,15 +129,88 @@ class TransformServiceImpl implements TransformService {
         String namespace, 
         String name, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
-            LOG.info("Trying...");        
+            LOG.info("transform...");        
             //try{
                 //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-            String serviceUrl = "hello"; //config.getString(namespace + "." + name);
+            String serviceUrl = config.getString(namespace + "." + name);
+            String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+            LOG.info(body);
+            Observable.defer(new Callable<ObservableSource<?>>() {
+                @Override
+                public ObservableSource<?> call() throws Exception {
+                    LOG.info("transform defer..."); 
+                    URL serviceURL = new URL(serviceUrl);
+                    LOG.info(serviceUrl);
+                    LOG.info(tokenUrl);
+                    LOG.info(tokenCache.get(serviceUrl));       
+                    return client
+                        .post(serviceURL.getHost(), serviceURL.getPath())
+                        //.bearerTokenAuthentication(tokenCache.get(serviceUrl))
+                        //.ssl(true)
+                        .timeout(10000)
+                        .putHeader("Content-Type", "application/json")
+                        .rxSendJsonObject(body)
+                        .map(HttpResponse::bodyAsJsonObject)
+                        .toObservable();
+                }
+            })
+            .retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
+                @Override
+                public ObservableSource<?> apply(final Observable<Throwable> throwableObservable) throws Exception {
+                    return throwableObservable.flatMap(new Function<Throwable, ObservableSource<?>>() {
+                        @Override
+                        public ObservableSource<?> apply(Throwable throwable) throws Exception {
+                            LOG.info("transform retryWhen");
+                         /*   
+                            if (throwable instanceof HttpException) {
+                                HttpException httpException = (HttpException) throwable;
+                                if (httpException.code() == 401) {
+                                    return client
+                                        .get(tokenUrl)
+                                        .ssl(true)
+                                        .timeout(10000)
+                                        .putHeader("Metadata-Flavor", "Google")
+                                        .rxSend()
+                                        .map(HttpResponse::bodyAsString)
+                                        .doOnNext(refreshedToken -> updateTokenCache(refreshedToken));
+                            
+                                }
+                            }*/
+                            return Observable.error(throwable);
+                        }
+                    });
+                }
+            })
+            .subscribe(
+                resp -> {
+                    LOG.info("transform subscribe response");        
+                    LOG.info(resp);
+                    LOG.info("ok");
+                    resultHandler.handle(Future.succeededFuture((JsonObject) resp));
+                },
+                throwable -> {
+                    LOG.info("transform subscribe throwable");        
+                    LOG.error(throwable.getMessage());
+                    resultHandler.handle(Future.failedFuture(throwable));
+                });
             
-            Observable<String> source = Observable.fromFuture(getToken(serviceUrl));
-            //tokenCache.get(serviceUrl)
-            //Callable<String> callable = () -> tokenCache.get(serviceUrl);
-            //Observable<String> source = Observable.fromCallable(callable);
+            return this;
+    } 
+}
+
+/*
+
+
+            Observable<String> source = return client
+                .get(tokenUrl)
+                .ssl(true)
+                .timeout(10000)
+                .putHeader("Metadata-Flavor", "Google")
+                .rxSend()
+                .map(HttpResponse::bodyAsString);
+
+
+            
             source    
                 .flatMapSingle(token -> {
                     LOG.info("send for transformation");
@@ -150,38 +232,4 @@ class TransformServiceImpl implements TransformService {
                         resultHandler.handle(Future.failedFuture(throwable));
                     }
                 );
-                
-            return this;
-    } 
-
-    private Future<String> getToken(String serviceUrl) {
-        Promise<String> promise = Promise.promise();
-    
-        tokenCache.get(serviceUrl).whenComplete((token, throwable) -> {
-          if (throwable == null) {
-            promise.complete(token);
-          } else {
-            promise.fail(throwable);
-          }
-        });
-    
-        return promise.future();
-      }
-
-    /*
-    public static Single<String> getToken(String serviceUrl, WebClient client) {
-        if(false)
-            return Single.just("hello");//cached token...
-        else {
-            LOG.info("inside getToken");
-            String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
-            return client
-                .get(tokenUrl)
-                .ssl(true)
-                .timeout(10000)
-                .putHeader("Metadata-Flavor", "Google")
-                .rxSend()
-                .map(HttpResponse::bodyAsString);
-        }
-      }*/
-}
+                */
