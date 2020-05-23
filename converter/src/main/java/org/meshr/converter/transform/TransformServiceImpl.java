@@ -133,7 +133,8 @@ class TransformServiceImpl implements TransformService {
             //try{
                 //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
             String serviceUrl = config.getString(namespace + "." + name);
-            String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+            //String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
+            String tokenUri = String.format("/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
             LOG.info(body);
             Observable.defer(new Callable<ObservableSource<?>>() {
                 @Override
@@ -141,12 +142,11 @@ class TransformServiceImpl implements TransformService {
                     LOG.info("transform defer..."); 
                     URL serviceURL = new URL(serviceUrl);
                     LOG.info(serviceUrl);
-                    LOG.info(tokenUrl);
+                    LOG.info(tokenUri);
                     LOG.info(tokenCache.get(serviceUrl));       
                     return client
                         .post(serviceURL.getHost(), serviceURL.getPath())
-                        //.bearerTokenAuthentication(tokenCache.get(serviceUrl))
-                        //.ssl(true)
+                        .bearerTokenAuthentication(tokenCache.get(serviceUrl))
                         .timeout(10000)
                         .putHeader("Content-Type", "application/json")
                         .rxSendJsonObject(body)
@@ -161,21 +161,21 @@ class TransformServiceImpl implements TransformService {
                         @Override
                         public ObservableSource<?> apply(Throwable throwable) throws Exception {
                             LOG.info("transform retryWhen");
-                         /*   
-                            if (throwable instanceof HttpException) {
-                                HttpException httpException = (HttpException) throwable;
-                                if (httpException.code() == 401) {
-                                    return client
-                                        .get(tokenUrl)
-                                        .ssl(true)
-                                        .timeout(10000)
-                                        .putHeader("Metadata-Flavor", "Google")
-                                        .rxSend()
-                                        .map(HttpResponse::bodyAsString)
-                                        .doOnNext(refreshedToken -> updateTokenCache(refreshedToken));
-                            
-                                }
-                            }*/
+                            LOG.info(throwable);   
+                            if (throwable instanceof io.vertx.core.json.DecodeException) {
+                                LOG.info("instanceof io.vertx.core.json.DecodeException");
+                                return client
+                                    .get("http://metadata", tokenUri)
+                                    .timeout(10000)
+                                    .putHeader("Metadata-Flavor", "Google")
+                                    .rxSend()
+                                    .map(HttpResponse::bodyAsString)
+                                    .toObservable()
+                                    .doOnNext(refreshedToken -> {
+                                        LOG.info(refreshedToken);
+                                        tokenCache.put(serviceUrl, refreshedToken);
+                                    });
+                            }
                             return Observable.error(throwable);
                         }
                     });
@@ -197,39 +197,3 @@ class TransformServiceImpl implements TransformService {
             return this;
     } 
 }
-
-/*
-
-
-            Observable<String> source = return client
-                .get(tokenUrl)
-                .ssl(true)
-                .timeout(10000)
-                .putHeader("Metadata-Flavor", "Google")
-                .rxSend()
-                .map(HttpResponse::bodyAsString);
-
-
-            
-            source    
-                .flatMapSingle(token -> {
-                    LOG.info("send for transformation");
-                    return client
-                        .post(serviceUrl)
-                        .bearerTokenAuthentication(token)
-                        .ssl(true)
-                        .timeout(10000)
-                        .putHeader("Content-Type", "application/json")
-                        .rxSendJsonObject(body.getJsonObject("data"));
-                })
-                .subscribe(
-                    resp -> {
-                        LOG.info(resp.bodyAsJsonObject());
-                        resultHandler.handle(Future.succeededFuture(resp.bodyAsJsonObject()));
-                    },
-                    throwable -> {
-                        LOG.error(throwable.getMessage());
-                        resultHandler.handle(Future.failedFuture(throwable));
-                    }
-                );
-                */
