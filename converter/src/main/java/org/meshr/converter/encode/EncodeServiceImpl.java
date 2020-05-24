@@ -1,11 +1,29 @@
-package org.meshr.converter.encode;
-
 /*
  * Copyright (c) 2020 Robert Sahlin
  *
- * Use of this software is governed by the Business Source License included
- * in the LICENSE file.
+ * Use of this software is governed by the Business Source License 1.1.
+ * 
+ * Parameters
+ * 
+ * Licensor:             Robert Sahlin
+ * Licensed Work:        Meshr
+ *                       The Licensed Work is (c) 2020 Robert Sahlin.
+ * Additional Use Grant: You may use the Licensed Work when the Licensed Work is 
+ *                       processing less than 10 Million unique events per month, 
+ *                       provided that you do not use the Licensed Work for a 
+ *                       commercial offering that allows third parties to access
+ *                       the functionality of the Licensed Work so that such third
+ *                       parties directly benefit from the features of the Licensed Work.
+ * 
+ * Change Date:          12 months after the git commit date of the code
+ * 
+ * Change License:       GNU AFFERO GENERAL PUBLIC LICENSE, Version 3
+ * 
+ * For information about alternative licensing arrangements for the Licensed Work,
+ * please contact the licensor.
  */
+
+package org.meshr.converter.encode;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -96,12 +114,12 @@ import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 
 class EncodeServiceImpl implements EncodeService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EncodeServiceImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EncodeServiceImpl.class);
+    private LoadingCache<String, Schema> schemaCache;
 
-    //LoadingCache<String, Publisher> publisherCache;
-
-    EncodeServiceImpl() {
-        LOG.info("Encode service ...");    
+    EncodeServiceImpl(LoadingCache<String, Schema> schemaCache) {
+        LOG.info("Encode service ...");
+        this.schemaCache = schemaCache;    
     }
 
     @Override
@@ -113,12 +131,12 @@ class EncodeServiceImpl implements EncodeService {
             LOG.info("Encoding...");        
             try{
                 LOG.info("Trying...");        
-                String bucketName = "datahem-schemas";
-                StringJoiner fileName = new StringJoiner(".");
-                fileName.add(namespace).add(name).add("avsc");
+                StringJoiner fullName = new StringJoiner(".");
+                fullName.add(namespace).add(name);
                 //"com.google.analytics.v2.Event.avsc";
                 Schema schema = Schema.create(Schema.Type.STRING);
-                schema = getAvroSchemaFromCloudStorage(bucketName, fileName.toString());
+                //schema = getAvroSchemaFromCloudStorage(bucketName, fileName.toString());
+                schema = schemaCache.get(fullName.toString());
                 LOG.info(schema.toString());
                 JsonAvroConverter converter = new JsonAvroConverter();
                 //GenericData.Record record = converter.convertToGenericDataRecord(body.getJsonObject("data").toString().getBytes(), schema);
@@ -132,6 +150,7 @@ class EncodeServiceImpl implements EncodeService {
             return this;
     }
 
+    /*
     public static Schema getAvroSchemaFromCloudStorage(String bucketName, String fileName) throws Exception {
         try{
             LOG.info(bucketName);
@@ -147,5 +166,5 @@ class EncodeServiceImpl implements EncodeService {
             e.printStackTrace();
             return null;
         }
-    }
+    }*/
 }
