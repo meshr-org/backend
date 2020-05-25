@@ -66,14 +66,14 @@ public class TransformService {
     return delegate;
   }
 
-  public org.meshr.converter.transform.reactivex.TransformService transform(JsonObject body, String namespace, String name, Handler<AsyncResult<JsonObject>> resultHandler) { 
-    delegate.transform(body, namespace, name, resultHandler);
+  public org.meshr.converter.transform.reactivex.TransformService transform(JsonObject message, Handler<AsyncResult<JsonObject>> resultHandler) { 
+    delegate.transform(message, resultHandler);
     return this;
   }
 
-  public Single<JsonObject> rxTransform(JsonObject body, String namespace, String name) { 
+  public Single<JsonObject> rxTransform(JsonObject message) { 
     return io.vertx.reactivex.impl.AsyncResultSingle.toSingle(handler -> {
-      transform(body, namespace, name, handler);
+      transform(message, handler);
     });
   }
 

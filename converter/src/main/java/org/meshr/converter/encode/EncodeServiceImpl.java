@@ -107,11 +107,6 @@ import org.apache.avro.generic.GenericData;
 import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 
-
-//import org.apache.beam.sdk.io.gcp.bigquery.BigQueryAvroUtils;
-//import org.meshr.processor.utils.ProtobufUtils;
-
-
 class EncodeServiceImpl implements EncodeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EncodeServiceImpl.class);
@@ -124,47 +119,29 @@ class EncodeServiceImpl implements EncodeService {
 
     @Override
     public EncodeService encode(
-        JsonObject body, 
-        String namespace, 
-        String name, 
+        JsonObject message, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
-            LOG.info("Encoding...");        
+            LOG.info("Encoding...");
+            JsonObject data = message.getJsonObject("data");
+            JsonObject attributes = message.getJsonObject("attributes");
             try{
                 LOG.info("Trying...");        
                 StringJoiner fullName = new StringJoiner(".");
-                fullName.add(namespace).add(name);
-                //"com.google.analytics.v2.Event.avsc";
+                fullName.add(attributes.getString("namespace")).add(attributes.getString("name"));
                 Schema schema = Schema.create(Schema.Type.STRING);
-                //schema = getAvroSchemaFromCloudStorage(bucketName, fileName.toString());
                 schema = schemaCache.get(fullName.toString());
                 LOG.info(schema.toString());
                 JsonAvroConverter converter = new JsonAvroConverter();
                 //GenericData.Record record = converter.convertToGenericDataRecord(body.getJsonObject("data").toString().getBytes(), schema);
-                byte[] binaryAvro = converter.convertToAvro(body.getJsonObject("data").toString().getBytes(), schema);
-                body.put("data", Base64.getEncoder().encodeToString(binaryAvro));
-                body.getJsonObject("attributes").put("namespace", namespace).put("name", name).put("format", "avro/binary");
-                resultHandler.handle(Future.succeededFuture(body));
+                //byte[] binaryAvro = converter.convertToAvro(body.getJsonObject("data").toString().getBytes(), schema);
+                byte[] binaryAvro = converter.convertToAvro(data.toString().getBytes(), schema);
+                message.put("data", Base64.getEncoder().encodeToString(binaryAvro));
+                message.getJsonObject("attributes").put("format", "avro/binary");
+                resultHandler.handle(Future.succeededFuture(message));
             }catch(Exception e){
+                e.printStackTrace();
                 resultHandler.handle(Future.failedFuture(e));
             }
             return this;
     }
-
-    /*
-    public static Schema getAvroSchemaFromCloudStorage(String bucketName, String fileName) throws Exception {
-        try{
-            LOG.info(bucketName);
-            LOG.info(fileName);
-            Storage storage = StorageOptions.getDefaultInstance().getService();
-            Blob blob = storage.get(BlobId.of(bucketName, fileName));
-            ReadChannel reader = blob.reader();
-            InputStream inputStream = Channels.newInputStream(reader);
-            Schema schema = new Schema.Parser().parse(inputStream);
-            return schema;
-        }catch (Exception e){
-            LOG.info("cloud storage error");
-            e.printStackTrace();
-            return null;
-        }
-    }*/
 }

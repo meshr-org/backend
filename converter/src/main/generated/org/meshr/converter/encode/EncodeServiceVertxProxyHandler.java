@@ -116,9 +116,7 @@ public class EncodeServiceVertxProxyHandler extends ProxyHandler {
       accessed();
       switch (action) {
         case "encode": {
-          service.encode((io.vertx.core.json.JsonObject)json.getValue("body"),
-                        (java.lang.String)json.getValue("namespace"),
-                        (java.lang.String)json.getValue("name"),
+          service.encode((io.vertx.core.json.JsonObject)json.getValue("message"),
                         HelperUtils.createHandler(msg));
           break;
         }

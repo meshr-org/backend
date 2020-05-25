@@ -66,14 +66,14 @@ public class PublishService {
     return delegate;
   }
 
-  public org.meshr.converter.publish.reactivex.PublishService publish(JsonObject body, String namespace, String name, Handler<AsyncResult<JsonObject>> resultHandler) { 
-    delegate.publish(body, namespace, name, resultHandler);
+  public org.meshr.converter.publish.reactivex.PublishService publish(JsonObject message, Handler<AsyncResult<JsonObject>> resultHandler) { 
+    delegate.publish(message, resultHandler);
     return this;
   }
 
-  public Single<JsonObject> rxPublish(JsonObject body, String namespace, String name) { 
+  public Single<JsonObject> rxPublish(JsonObject message) { 
     return io.vertx.reactivex.impl.AsyncResultSingle.toSingle(handler -> {
-      publish(body, namespace, name, handler);
+      publish(message, handler);
     });
   }
 

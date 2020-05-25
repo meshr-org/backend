@@ -56,9 +56,7 @@ public interface TransformService {
 
     @Fluent
     TransformService transform(
-        JsonObject body, 
-        String namespace,
-        String name,
+        JsonObject message,
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore

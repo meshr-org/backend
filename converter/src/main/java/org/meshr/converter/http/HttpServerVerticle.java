@@ -85,7 +85,7 @@ public class HttpServerVerticle extends AbstractVerticle {
             .handler(BodyHandler.create());
         
         apiRouter
-            .post("/source/namespace/:namespace/name/:name")
+            .post("/")
             .handler(this::sourceConverter);
 
         vertx
@@ -105,19 +105,12 @@ public class HttpServerVerticle extends AbstractVerticle {
     }
 
     private void sourceConverter(RoutingContext context) {
-        String namespace = String.valueOf(context.request().getParam("namespace"));
-        String name = String.valueOf(context.request().getParam("name"));       
-        JsonObject body = context.getBodyAsJson();        
-        //LOG.info("apiReceiver body: " + body.toString());
-
-        transformService.rxTransform(body, namespace, name)
+        JsonObject message = context.getBodyAsJson();
+        
+        transformService.rxTransform(message)
         .toObservable()
-        /*.flatMapSingle(transformedBody -> {
-            LOG.info(transformedBody);
-            return Single.just(transformedBody);
-        })*/
-        .flatMapSingle(transformedBody -> encodeService.rxEncode(transformedBody,namespace, name))
-        .flatMapSingle(encodedBody -> publishService.rxPublish(encodedBody, namespace, name))
+        .flatMapSingle(transformedMessage -> encodeService.rxEncode(transformedMessage))
+        .flatMapSingle(encodedMessage -> publishService.rxPublish(encodedMessage))
         .subscribe(
             jsonObject -> {
                 System.out.println(jsonObject.encodePrettily());

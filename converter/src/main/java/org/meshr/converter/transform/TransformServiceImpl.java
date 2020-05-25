@@ -143,17 +143,17 @@ class TransformServiceImpl implements TransformService {
 
     @Override
     public TransformService transform(
-        JsonObject body, 
-        String namespace, 
-        String name, 
+        JsonObject message,
         Handler<AsyncResult<JsonObject>> resultHandler) {
-            LOG.info("transform...");        
+            LOG.info("transform...");
+            JsonObject data = message.getJsonObject("data");
+            JsonObject attributes = message.getJsonObject("attributes");     
             //try{
                 //JsonObject entity = body;//body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-            String serviceUrl = config.getString(namespace + "." + name);
+            String serviceUrl = config.getString(attributes.getString("namespace") + "." + attributes.getString("name"));
             //String tokenUrl = String.format("http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
             String tokenUri = String.format("/v1/instance/service-accounts/default/identity?audience=%s", serviceUrl);
-            LOG.info(body);
+            LOG.info(message);
             Observable.defer(new Callable<ObservableSource<?>>() {
                 @Override
                 public ObservableSource<?> call() throws Exception {
@@ -167,7 +167,7 @@ class TransformServiceImpl implements TransformService {
                         .bearerTokenAuthentication(tokenCache.get(serviceUrl))
                         .timeout(10000)
                         .putHeader("Content-Type", "application/json")
-                        .rxSendJsonObject(body)
+                        .rxSendJsonObject(message)
                         .map(HttpResponse::bodyAsJsonObject)
                         .toObservable();
                 }

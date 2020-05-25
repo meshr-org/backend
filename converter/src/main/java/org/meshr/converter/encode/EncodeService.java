@@ -56,9 +56,7 @@ public interface EncodeService {
 
     @Fluent
     EncodeService encode(
-        JsonObject body, 
-        String namespace,
-        String name,
+        JsonObject message,
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore

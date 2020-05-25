@@ -124,12 +124,12 @@ class PublishServiceImpl implements PublishService {
 
     @Override
     public PublishService publish(
-        JsonObject body, 
-        String namespace, 
-        String name, 
+        JsonObject message,  
         Handler<AsyncResult<JsonObject>> resultHandler) {
+            LOG.info("publishing...");
+            
             try {
-                Map<String,String> attributes = body.getJsonObject("attributes")
+                Map<String,String> attributes = message.getJsonObject("attributes")
                     .getMap()
                     .entrySet()
                     .stream()
@@ -140,14 +140,14 @@ class PublishServiceImpl implements PublishService {
                     .putAllAttributes(ImmutableMap.<String, String>builder()
                         .putAll(attributes)
                         .build())
-                    .setData(ByteString.copyFromUtf8(body.getString("data")))
+                    .setData(ByteString.copyFromUtf8(message.getString("data")))
                     .build();
                 
-                ApiFuture<String> topicFuture = publisherCache.get(namespace + "." + name).publish(pubsubMessage);
+                ApiFuture<String> topicFuture = publisherCache.get(attributes.get("namespace") + "." + attributes.get("name")).publish(pubsubMessage);
                 ApiFutures.addCallback(topicFuture,
                 new ApiFutureCallback<String>() {
                     public void onSuccess(String messageId) {
-                        resultHandler.handle(Future.succeededFuture(body));
+                        resultHandler.handle(Future.succeededFuture(message));
                     }
                     public void onFailure(Throwable t) {
                         LOG.error("Failed to publish: ", t);

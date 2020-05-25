@@ -116,9 +116,7 @@ public class PublishServiceVertxProxyHandler extends ProxyHandler {
       accessed();
       switch (action) {
         case "publish": {
-          service.publish((io.vertx.core.json.JsonObject)json.getValue("body"),
-                        (java.lang.String)json.getValue("namespace"),
-                        (java.lang.String)json.getValue("name"),
+          service.publish((io.vertx.core.json.JsonObject)json.getValue("message"),
                         HelperUtils.createHandler(msg));
           break;
         }

@@ -66,14 +66,14 @@ public class EncodeService {
     return delegate;
   }
 
-  public org.meshr.converter.encode.reactivex.EncodeService encode(JsonObject body, String namespace, String name, Handler<AsyncResult<JsonObject>> resultHandler) { 
-    delegate.encode(body, namespace, name, resultHandler);
+  public org.meshr.converter.encode.reactivex.EncodeService encode(JsonObject message, Handler<AsyncResult<JsonObject>> resultHandler) { 
+    delegate.encode(message, resultHandler);
     return this;
   }
 
-  public Single<JsonObject> rxEncode(JsonObject body, String namespace, String name) { 
+  public Single<JsonObject> rxEncode(JsonObject message) { 
     return io.vertx.reactivex.impl.AsyncResultSingle.toSingle(handler -> {
-      encode(body, namespace, name, handler);
+      encode(message, handler);
     });
   }
 

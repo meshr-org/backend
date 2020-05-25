@@ -116,9 +116,7 @@ public class TransformServiceVertxProxyHandler extends ProxyHandler {
       accessed();
       switch (action) {
         case "transform": {
-          service.transform((io.vertx.core.json.JsonObject)json.getValue("body"),
-                        (java.lang.String)json.getValue("namespace"),
-                        (java.lang.String)json.getValue("name"),
+          service.transform((io.vertx.core.json.JsonObject)json.getValue("message"),
                         HelperUtils.createHandler(msg));
           break;
         }

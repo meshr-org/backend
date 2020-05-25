@@ -54,9 +54,7 @@ public interface PublishService {
 
     @Fluent
     PublishService publish(
-        JsonObject body, 
-        String namespace,
-        String name,
+        JsonObject message,
         Handler<AsyncResult<JsonObject>> resultHandler);
 
     @GenIgnore

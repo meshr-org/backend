@@ -63,15 +63,13 @@ public class PublishServiceVertxEBProxy implements PublishService {
   }
 
   @Override
-  public  PublishService publish(JsonObject body, String namespace, String name, Handler<AsyncResult<JsonObject>> resultHandler){
+  public  PublishService publish(JsonObject message, Handler<AsyncResult<JsonObject>> resultHandler){
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
       return this;
     }
     JsonObject _json = new JsonObject();
-    _json.put("body", body);
-    _json.put("namespace", namespace);
-    _json.put("name", name);
+    _json.put("message", message);
 
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
     _deliveryOptions.addHeader("action", "publish");
