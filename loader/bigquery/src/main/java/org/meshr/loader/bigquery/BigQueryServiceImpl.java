@@ -1,11 +1,29 @@
-package org.meshr.loader.bigquery;
-
 /*
  * Copyright (c) 2020 Robert Sahlin
  *
- * Use of this software is governed by the Business Source License included
- * in the LICENSE file.
+ * Use of this software is governed by the Business Source License 1.1.
+ * 
+ * Parameters
+ * 
+ * Licensor:             Robert Sahlin
+ * Licensed Work:        Meshr
+ *                       The Licensed Work is (c) 2020 Robert Sahlin.
+ * Additional Use Grant: You may use the Licensed Work when the Licensed Work is 
+ *                       processing less than 10 Million unique events per month, 
+ *                       provided that you do not use the Licensed Work for a 
+ *                       commercial offering that allows third parties to access
+ *                       the functionality of the Licensed Work so that such third
+ *                       parties directly benefit from the features of the Licensed Work.
+ * 
+ * Change Date:          12 months after the git commit date of the code
+ * 
+ * Change License:       GNU AFFERO GENERAL PUBLIC LICENSE, Version 3
+ * 
+ * For information about alternative licensing arrangements for the Licensed Work,
+ * please contact the licensor.
  */
+
+package org.meshr.loader.bigquery;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -117,13 +135,20 @@ class BigQueryServiceImpl implements BigQueryService {
 
     public static Schema getAvroSchemaFromCloudStorage(String bucketName, String fileName) throws Exception {
             try{
+                LOG.info(bucketName);
+                LOG.info(fileName);
                 Storage storage = StorageOptions.getDefaultInstance().getService();
                 Blob blob = storage.get(BlobId.of(bucketName, fileName));
+                //LOG.info("cloud storage got blob");
                 ReadChannel reader = blob.reader();
+                //LOG.info("cloud storage got reader");
                 InputStream inputStream = Channels.newInputStream(reader);
+                //String inputStream = new String(blob.getContent()); // ok if small files
+                //LOG.info("cloud storage got inputstream");
                 Schema schema = new Schema.Parser().parse(inputStream);
                 return schema;
             }catch (Exception e){
+                LOG.info("cloud storage error");
                 e.printStackTrace();
                 return null;
             }
@@ -136,7 +161,7 @@ class BigQueryServiceImpl implements BigQueryService {
         JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
         String json = entity.toString();
         String bucketName = "datahem-schemas";
-        String fileName = "foo.Man.avsc";
+        String fileName = "com.google.analytics.v2.Event.avsc";
         Schema schema = Schema.create(Schema.Type.STRING);
         try{
             schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
@@ -154,8 +179,8 @@ class BigQueryServiceImpl implements BigQueryService {
         JsonFactory jsonFactory = new JacksonFactory();
         GoogleCredential credential;
         String projectId = "datahem";
-                String datasetId = "processor";
-                String tableId = "avro";
+                String datasetId = "analytics_2404202019";
+                String tableId = "events";
         try {
             credential = GoogleCredential.getApplicationDefault(transport,jsonFactory);
         } catch (IOException e) {

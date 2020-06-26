@@ -1,0 +1,10 @@
+#gcloud builds submit --config=cloudbuild.yaml . --substitutions=TAG_NAME=0.0.1
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE}:$TAG_NAME', '.']
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE}:latest', '.']
+images: ['gcr.io/$PROJECT_ID/${_SERVICE}']
+tags: ['transformer-com-google-analytics-v2-event']
+substitutions:
+  _SERVICE: transformer-com-google-analytics-v2-event
