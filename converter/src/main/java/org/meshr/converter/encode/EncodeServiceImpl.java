@@ -72,6 +72,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
 
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.channels.Channels;
 import java.io.IOException;
 
@@ -104,6 +105,10 @@ import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.api.services.bigquery.model.Clustering;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.message.BinaryMessageEncoder;
+import org.apache.avro.message.MessageEncoder;
+import org.apache.avro.generic.GenericData.Record;
+import org.apache.avro.generic.GenericRecord;
 import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 
@@ -137,9 +142,17 @@ class EncodeServiceImpl implements EncodeService {
                 schema = schemaCache.get(fullName.toString());
                 LOG.info(schema.toString());
                 JsonAvroConverter converter = new JsonAvroConverter();
+                GenericData.Record record = converter.convertToGenericDataRecord(data.toString().getBytes(), schema);
+                LOG.info(record.toString());
                 //GenericData.Record record = converter.convertToGenericDataRecord(body.getJsonObject("data").toString().getBytes(), schema);
                 //byte[] binaryAvro = converter.convertToAvro(body.getJsonObject("data").toString().getBytes(), schema);
-                byte[] binaryAvro = converter.convertToAvro(data.toString().getBytes(), schema);
+                //byte[] binaryAvro = converter.convertToAvro(data.toString().getBytes(), schema);
+                MessageEncoder<Record> encoder = new BinaryMessageEncoder<>(GenericData.get(), schema);
+		        ByteArrayOutputStream output = new ByteArrayOutputStream();
+		        encoder.encode(record, output);
+		        output.flush();
+                byte[] binaryAvro = output.toByteArray();
+                LOG.info(binaryAvro);
                 JsonObject encodedMessage = new JsonObject();
                 //encodedMessage.put("data", Base64.getEncoder().encodeToString(binaryAvro));
                 encodedMessage.put("data", binaryAvro);

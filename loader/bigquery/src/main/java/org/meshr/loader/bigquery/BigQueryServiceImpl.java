@@ -103,6 +103,8 @@ import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.api.services.bigquery.model.Clustering;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericData.Record;
+import org.apache.avro.message.BinaryMessageDecoder;
 import tech.allegro.schema.json2avro.converter.AvroConversionException;
 import tech.allegro.schema.json2avro.converter.JsonAvroConverter;
 
@@ -156,112 +158,124 @@ class BigQueryServiceImpl implements BigQueryService {
 
     @Override
     public BigQueryService insertData(JsonObject body, String topic, Handler<AsyncResult<Void>> resultHandler) {
-        LOG.info("Trying...");        
-        //String json = "{ \"firstname\":\"Frank\", \"age\":\"47\"}";
-        JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
-        String json = entity.toString();
-        String bucketName = "datahem-schemas";
-        String fileName = "com.google.analytics.v2.Event.avsc";
-        Schema schema = Schema.create(Schema.Type.STRING);
         try{
-            schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
-            LOG.info(schema.toString());
+            LOG.info("Trying...");        
+            //String json = "{ \"firstname\":\"Frank\", \"age\":\"47\"}";
+            //JsonObject entity = body.getJsonObject("data").put("attributes", body.getJsonObject("attributes"));
+            //String json = entity.toString();
+            LOG.info("body: " + body.toString());
+            //String body.getJsonObject("message").getString("data");
+            byte[] avro = Base64.getDecoder().decode(body.getJsonObject("message").getString("data"));
+            LOG.info(avro);
+            //byte[] avro = body.getJsonObject("data").getBinary("data");
+            String bucketName = "datahem-schemas";
+            String fileName = "com.google.analytics.v2.Event.avsc";
+            Schema schema = Schema.create(Schema.Type.STRING);
+                schema = getAvroSchemaFromCloudStorage(bucketName, fileName);
+                LOG.info(schema.toString());
+
+            
+            //JsonAvroConverter converter = new JsonAvroConverter();
+            //GenericData.Record record = converter.convertToGenericDataRecord(json.getBytes(), schema);
+            //BinaryMessageDecoder<Record> decoder = new BinaryMessageDecoder<>(GenericData.get(), schema, cache);
+            BinaryMessageDecoder<Record> decoder = new BinaryMessageDecoder<>(GenericData.get(), schema);
+            Record record = decoder.decode(avro);
+            TableSchema newSchema = BigQueryAvroUtils.getTableSchema(schema);
+            TableRow tRow = BigQueryAvroUtils.convertGenericRecordToTableRow(record, newSchema); 
+            LOG.info(tRow.toString());
+
+            HttpTransport transport = new NetHttpTransport();
+            JsonFactory jsonFactory = new JacksonFactory();
+            GoogleCredential credential;
+            String projectId = "datahem";
+            String datasetId = "analytics_2404202019";
+            String tableId = "events";
+            try {
+                credential = GoogleCredential.getApplicationDefault(transport,jsonFactory);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (credential.createScopedRequired()) {
+                credential = credential.createScoped(BigqueryScopes.all());
+            }
+            try{        
+                
+        // -->        Optional<GenericRecord> genericRow = Optional.ofNullable(genericRecordFromPayload(body));
+                //if(measurementProtocol.isPresent()){
+        // -->      TableRow tRow = ... genericRow.get()
+                if(true){
+                    TableDataInsertAllRequest.Rows row = new TableDataInsertAllRequest.Rows();
+                    row.setInsertId(String.valueOf(System.currentTimeMillis()));
+                    row.setJson(tRow);
+                    TableDataInsertAllRequest request = new TableDataInsertAllRequest();
+                    request.setRows(Arrays.asList(row));
+
+                    
+                    Bigquery bigquery = new Bigquery.Builder(transport, jsonFactory, credential)
+                    .setApplicationName("loader.bigquery").build();
+                    //.setApplicationName(this.config.applicationName).build();
+                    TableDataInsertAllResponse response = bigquery.tabledata().insertAll(projectId, datasetId, tableId, request).execute();
+                    if(response.getInsertErrors() != null){
+                        for (TableDataInsertAllResponse.InsertErrors err: response.getInsertErrors()) {
+                            for (ErrorProto ep: err.getErrors()) {
+                                LOG.error(ep.getReason() + " : " + ep.getMessage() + " at " + ep.getLocation());
+                            }
+                        }
+                    }	
+                }
+                resultHandler.handle(Future.succeededFuture());
+            } catch (java.lang.Exception e) {
+                LOG.error("BigQueryClient contextInitialized error ", e);
+                    Bigquery.Tables bqTables = new Bigquery.Builder(transport, jsonFactory, credential).build().tables();
+        // -->            TableSchema newSchema = ... 
+                    Table pTable = new Table();
+                    pTable.setSchema(newSchema);
+                    pTable.setTableReference(new TableReference()
+                            .setProjectId(projectId)
+                            .setDatasetId(datasetId)
+                            .setTableId(tableId));
+                    try{
+                        LOG.info("Get current table schema");
+                        
+                        Bigquery.Tables.Get bqTableGet = bqTables.get(projectId, datasetId, tableId);
+                        Table bqTable = bqTableGet.execute();
+                        TableSchema oldSchema = bqTable.getSchema();
+                        if(oldSchema.equals(newSchema)){ //if old schema equals new schema do nothing
+                            LOG.info("Current schema equals new schema");
+                        }else{ //if old schema doesn't equals new schema, patch the table
+                            LOG.info("Current schema doesn't equal new schema -> patch table schema");
+                            Bigquery.Tables.Patch bqTablePatch = bqTables.patch(projectId, datasetId, tableId, pTable);
+                            bqTablePatch.execute();
+                        }
+                    }
+                    catch (GoogleJsonResponseException gjre) {
+                        if(e instanceof GoogleJsonResponseException){
+                            int statusCode = gjre.getStatusCode();
+                            if(statusCode == 404){// && table.createDisposition.equals("CREATE_IF_NEEDED")){
+                                LOG.info("Couldn't find table -> create new table");
+                                LOG.info("create new table " + projectId +":"+datasetId);
+                                
+                                try{
+                                    LOG.info("create new table schema: " + pTable.toPrettyString());
+                                    Bigquery.Tables.Insert bqTableInsert = bqTables.insert(projectId, datasetId, pTable);
+                                    bqTableInsert.execute();
+                                }catch(IOException ioe){
+                                    LOG.error("exception", ioe);
+                                }
+                            }else{
+                                gjre.printStackTrace();
+                                //System.exit(1);
+                            }
+                        }
+                    }catch(IOException ioe){
+                        LOG.error("exception", ioe);
+                    }
+                resultHandler.handle(Future.failedFuture(e));
+            }
+        } catch (java.io.IOException e) {
+            LOG.error("IO exception decoding record ", e);
         } catch (java.lang.Exception e) {
             LOG.error("Cloud Storage Client contextInitialized error ", e);
-        }
-        JsonAvroConverter converter = new JsonAvroConverter();
-        GenericData.Record record = converter.convertToGenericDataRecord(json.getBytes(), schema);
-        TableSchema newSchema = BigQueryAvroUtils.getTableSchema(schema);
-        TableRow tRow = BigQueryAvroUtils.convertGenericRecordToTableRow(record, newSchema); 
-        LOG.info(tRow.toString());
-
-        HttpTransport transport = new NetHttpTransport();
-        JsonFactory jsonFactory = new JacksonFactory();
-        GoogleCredential credential;
-        String projectId = "datahem";
-                String datasetId = "analytics_2404202019";
-                String tableId = "events";
-        try {
-            credential = GoogleCredential.getApplicationDefault(transport,jsonFactory);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (credential.createScopedRequired()) {
-            credential = credential.createScoped(BigqueryScopes.all());
-        }
-        try{        
-            
-    // -->        Optional<GenericRecord> genericRow = Optional.ofNullable(genericRecordFromPayload(body));
-            //if(measurementProtocol.isPresent()){
-    // -->      TableRow tRow = ... genericRow.get()
-            if(true){
-                TableDataInsertAllRequest.Rows row = new TableDataInsertAllRequest.Rows();
-                row.setInsertId(String.valueOf(System.currentTimeMillis()));
-                row.setJson(tRow);
-                TableDataInsertAllRequest request = new TableDataInsertAllRequest();
-                request.setRows(Arrays.asList(row));
-
-                
-                Bigquery bigquery = new Bigquery.Builder(transport, jsonFactory, credential)
-                .setApplicationName("loader.bigquery").build();
-                //.setApplicationName(this.config.applicationName).build();
-                TableDataInsertAllResponse response = bigquery.tabledata().insertAll(projectId, datasetId, tableId, request).execute();
-                if(response.getInsertErrors() != null){
-                    for (TableDataInsertAllResponse.InsertErrors err: response.getInsertErrors()) {
-                        for (ErrorProto ep: err.getErrors()) {
-                            LOG.error(ep.getReason() + " : " + ep.getMessage() + " at " + ep.getLocation());
-                        }
-                    }
-                }	
-            }
-            resultHandler.handle(Future.succeededFuture());
-        } catch (java.lang.Exception e) {
-            LOG.error("BigQueryClient contextInitialized error ", e);
-                Bigquery.Tables bqTables = new Bigquery.Builder(transport, jsonFactory, credential).build().tables();
-    // -->            TableSchema newSchema = ... 
-                Table pTable = new Table();
-                pTable.setSchema(newSchema);
-                pTable.setTableReference(new TableReference()
-                        .setProjectId(projectId)
-                        .setDatasetId(datasetId)
-                        .setTableId(tableId));
-                try{
-                    LOG.info("Get current table schema");
-                    
-                    Bigquery.Tables.Get bqTableGet = bqTables.get(projectId, datasetId, tableId);
-                    Table bqTable = bqTableGet.execute();
-                    TableSchema oldSchema = bqTable.getSchema();
-                    if(oldSchema.equals(newSchema)){ //if old schema equals new schema do nothing
-                        LOG.info("Current schema equals new schema");
-                    }else{ //if old schema doesn't equals new schema, patch the table
-                        LOG.info("Current schema doesn't equal new schema -> patch table schema");
-                        Bigquery.Tables.Patch bqTablePatch = bqTables.patch(projectId, datasetId, tableId, pTable);
-                        bqTablePatch.execute();
-                    }
-                }
-                catch (GoogleJsonResponseException gjre) {
-                    if(e instanceof GoogleJsonResponseException){
-                        int statusCode = gjre.getStatusCode();
-                        if(statusCode == 404){// && table.createDisposition.equals("CREATE_IF_NEEDED")){
-                            LOG.info("Couldn't find table -> create new table");
-                            LOG.info("create new table " + projectId +":"+datasetId);
-                            
-                            try{
-                                LOG.info("create new table schema: " + pTable.toPrettyString());
-                                Bigquery.Tables.Insert bqTableInsert = bqTables.insert(projectId, datasetId, pTable);
-                                bqTableInsert.execute();
-                            }catch(IOException ioe){
-                                LOG.error("exception", ioe);
-                            }
-                        }else{
-                            gjre.printStackTrace();
-                            //System.exit(1);
-                        }
-                    }
-                }catch(IOException ioe){
-                    LOG.error("exception", ioe);
-                }
-            resultHandler.handle(Future.failedFuture(e));
         }
         //keepAlive();
     return this;

@@ -1,4 +1,4 @@
-# collector
+Q# collector
 Collect data sent over HTTP from trackers and publish the data on pubsub.
 
 *package

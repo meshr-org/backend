@@ -140,9 +140,10 @@ class PublishServiceImpl implements PublishService {
                     .putAllAttributes(ImmutableMap.<String, String>builder()
                         .putAll(attributes)
                         .build())
-                    .setData(ByteString.copyFromUtf8(message.getString("data")))
+                    //.setData(ByteString.copyFromUtf8(message.getString("data")))
+                    .setData(ByteString.copyFrom(message.getBinary("data")))
                     .build();
-                
+
                 ApiFuture<String> topicFuture = publisherCache
                     .get(attributes.get("namespace") + "." + attributes.get("name"))
                     .publish(pubsubMessage);
