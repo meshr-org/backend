@@ -14,6 +14,8 @@ mvn clean package jib:dockerBuild
 docker run -p 8080:8080 gcr.io/datahem/converter
 docker run -e com.google.analytics.v2.Event=https://europe-west1-datahem.cloudfunctions.net/com_google_analytics_v2_Event -p 8080:8080 gcr.io/datahem/converter
 
+curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"version":"2","items":[{"id":"12345","brand":"Google","name":"Triblend Android T-Shirt","variant":"Gray","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"15.25","quantity":"1","list_id":"SR123","list_name":"Search Results"},{"id":"67890","brand":"Google","name":"Donut Friday Scented T-Shirt","variant":"Black","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"33.75","quantity":"1","list_id":"SR123","list_name":"Search Results"}]}, "attributes":{"namespace":"com.google.analytics.v2","name":"Event"}}'   "http://localhost:8080/"
+
 curl --header "Content-Type: application/json"   --request POST   --data '{"data":{"version":"2","items":[{"id":"12345","brand":"Google","name":"Triblend Android T-Shirt","variant":"Gray","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"15.25","quantity":"1","list_id":"SR123","list_name":"Search Results"},{"id":"67890","brand":"Google","name":"Donut Friday Scented T-Shirt","variant":"Black","category":"Apparel","category2":"Mens","category3":"Shirts","category4":"Tshirts","price":"33.75","quantity":"1","list_id":"SR123","list_name":"Search Results"}]}, "attributes":{"namespace":"com.google.analytics.v1","name":"Hit"}}'   "http://localhost:8080/source/namespace/com.google.analytics.v2/name/Event"
 
 

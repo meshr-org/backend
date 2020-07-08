@@ -143,9 +143,10 @@ class PublishServiceImpl implements PublishService {
                     .setData(ByteString.copyFromUtf8(message.getString("data")))
                     .build();
                 
-                ApiFuture<String> topicFuture = publisherCache.get(attributes.get("namespace") + "." + attributes.get("name")).publish(pubsubMessage);
-                ApiFutures.addCallback(topicFuture,
-                new ApiFutureCallback<String>() {
+                ApiFuture<String> topicFuture = publisherCache
+                    .get(attributes.get("namespace") + "." + attributes.get("name"))
+                    .publish(pubsubMessage);
+                ApiFutures.addCallback(topicFuture, new ApiFutureCallback<String>() {
                     public void onSuccess(String messageId) {
                         resultHandler.handle(Future.succeededFuture(message));
                     }

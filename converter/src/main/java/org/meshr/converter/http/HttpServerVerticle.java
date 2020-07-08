@@ -106,21 +106,24 @@ public class HttpServerVerticle extends AbstractVerticle {
 
     private void sourceConverter(RoutingContext context) {
         JsonObject message = context.getBodyAsJson();
+        LOG.info("source: " + message.toString());
         
-        transformService.rxTransform(message)
-        .toObservable()
-        .flatMapSingle(transformedMessage -> encodeService.rxEncode(transformedMessage))
-        .flatMapSingle(encodedMessage -> publishService.rxPublish(encodedMessage))
-        .subscribe(
-            jsonObject -> {
-                System.out.println(jsonObject.encodePrettily());
-                context.response().setStatusCode(200).end();
-            },
-            throwable -> {
-                System.out.println(throwable.getMessage());
-                context.fail(500);
-            }
-        );
-
+        //transformService.rxTransform(message)
+        //.toObservable()
+        //.flatMapSingle(transformedMessage -> encodeService.rxEncode(transformedMessage))
+        encodeService.rxEncode(message)
+            .toObservable()
+            //.flatMapSingle(encodedMessage -> publishService.rxPublish(encodedMessage))
+            .flatMapSingle(encodedMessage -> publishService.rxPublish(encodedMessage))
+            .subscribe(
+                jsonObject -> {
+                    System.out.println(jsonObject.encodePrettily());
+                    context.response().setStatusCode(200).end();
+                },
+                throwable -> {
+                    System.out.println(throwable.getMessage());
+                    context.fail(500);
+                }
+            );
     }
 }

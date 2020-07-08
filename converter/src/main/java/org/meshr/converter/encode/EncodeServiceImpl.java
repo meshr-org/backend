@@ -122,8 +122,13 @@ class EncodeServiceImpl implements EncodeService {
         JsonObject message, 
         Handler<AsyncResult<JsonObject>> resultHandler) {
             LOG.info("Encoding...");
-            JsonObject data = message.getJsonObject("data");
-            JsonObject attributes = message.getJsonObject("attributes");
+            LOG.info("encode: " + message.toString());
+            String payload = new String(Base64.getDecoder().decode(message.getJsonObject("message").getString("data")));
+            LOG.info("payload: " + payload);
+            JsonObject data = new JsonObject(payload); //message.getJsonObject("message").getJsonObject("data");
+            LOG.info("data: " + data.toString());
+            JsonObject attributes = message.getJsonObject("message").getJsonObject("attributes");
+            
             try{
                 LOG.info("Trying...");        
                 StringJoiner fullName = new StringJoiner(".");
@@ -135,9 +140,12 @@ class EncodeServiceImpl implements EncodeService {
                 //GenericData.Record record = converter.convertToGenericDataRecord(body.getJsonObject("data").toString().getBytes(), schema);
                 //byte[] binaryAvro = converter.convertToAvro(body.getJsonObject("data").toString().getBytes(), schema);
                 byte[] binaryAvro = converter.convertToAvro(data.toString().getBytes(), schema);
-                message.put("data", Base64.getEncoder().encodeToString(binaryAvro));
-                message.getJsonObject("attributes").put("format", "avro/binary");
-                resultHandler.handle(Future.succeededFuture(message));
+                JsonObject encodedMessage = new JsonObject();
+                //encodedMessage.put("data", Base64.getEncoder().encodeToString(binaryAvro));
+                encodedMessage.put("data", binaryAvro);
+                attributes.put("format", "avro/binary");
+                encodedMessage.put("attributes", attributes);
+                resultHandler.handle(Future.succeededFuture(encodedMessage));
             }catch(Exception e){
                 e.printStackTrace();
                 resultHandler.handle(Future.failedFuture(e));
